@@ -1,26 +1,305 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "../styles/tokens.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-display);
+  --font-display: var(--font-display);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border-subtle);
+  --color-destructive: var(--danger);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--text-muted);
+  --color-muted: var(--surface);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--neon-primary);
+  --color-popover-foreground: var(--text);
+  --color-popover: var(--surface);
+  --color-card-foreground: var(--text);
+  --color-card: var(--surface);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary: var(--neon-primary);
+  --primary-foreground: var(--bg);
+  --secondary: var(--surface-elevated);
+  --secondary-foreground: var(--text);
+  --muted: var(--surface);
+  --muted-foreground: var(--text-muted);
+  --accent: var(--surface-elevated);
+  --accent-foreground: var(--text);
+  --destructive: var(--danger);
+  --border: var(--border-subtle);
+  --input: var(--border-subtle);
+  --ring: var(--neon-primary);
+  --chart-1: var(--neon-primary);
+  --chart-2: var(--neon-accent);
+  --chart-3: var(--text-muted);
+  --chart-4: var(--surface-elevated);
+  --chart-5: var(--surface);
+  --radius: 0.625rem;
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--text);
+  --sidebar-primary: var(--neon-primary);
+  --sidebar-primary-foreground: var(--bg);
+  --sidebar-accent: var(--surface-elevated);
+  --sidebar-accent-foreground: var(--text);
+  --sidebar-border: var(--border-subtle);
+  --sidebar-ring: var(--neon-primary);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ----------------------------------------------------------------------------
+   Arcade cabinet ambiance
+---------------------------------------------------------------------------- */
+@layer base {
+  .arcade-bg {
+    background-color: #000;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   Neon utilities — a PROPORTIONAL glow scale. Use the smallest that reads.
+   Neon is an accent: prefer subtle/xs for labels & data; reserve neon-text
+   for large display titles or interactive hover states only.
+---------------------------------------------------------------------------- */
+
+/* Large display titles / hero focal text. Single refined layer. */
+@utility neon-text {
+  text-shadow: 0 0 10px currentColor;
+}
+
+/* Default for most accented text (PersonalBest, small labels, hover). */
+@utility neon-text-subtle {
+  text-shadow: 0 0 8px currentColor;
+}
+
+/* Captions / tiny labels — barely-there glow. */
+@utility neon-text-xs {
+  text-shadow: 0 0 6px currentColor;
+}
+
+@utility arcade-title {
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  letter-spacing: 0.06em;
+}
+
+/* ----------------------------------------------------------------------------
+   Glass — translucent blurred surface on black. The default foreground card.
+---------------------------------------------------------------------------- */
+@utility glass {
+  background-color: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border-radius: var(--radius);
+}
+
+/* ----------------------------------------------------------------------------
+   Keyframes (game previews + cabinet effects)
+---------------------------------------------------------------------------- */
+@keyframes arcade-sweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes arcade-flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  45% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+  55% {
+    opacity: 1;
+  }
+}
+
+@keyframes seven-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes chop-sweep {
+  0% {
+    transform: translateX(calc(-50% - 70px));
+  }
+  100% {
+    transform: translateX(calc(-50% + 70px));
+  }
+}
+
+@keyframes light-cycle {
+  0%,
+  12% {
+    background-color: var(--surface-elevated);
+  }
+  20%,
+  62% {
+    background-color: var(--neon-primary);
+  }
+  70%,
+  100% {
+    background-color: var(--surface-elevated);
+  }
+}
+
+/* Opacity-based alternative for components that prefer a lit overlay layer
+   (cheaper than animating background-color). */
+@keyframes light-cycle-fade {
+  0%,
+  12% {
+    opacity: 0;
+  }
+  20%,
+  62% {
+    opacity: 1;
+  }
+  70%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes blink-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+/* Shared calm entrances — ease-out, no bounce. Pair with var(--dur)/var(--ease). */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   Animation helpers — drop-in classes so components stay consistent & smooth.
+---------------------------------------------------------------------------- */
+@utility animate-fade-in {
+  animation: fade-in var(--dur) var(--ease) both;
+}
+
+@utility animate-rise-in {
+  animation: rise-in var(--dur-slow) var(--ease) both;
+}
+
+@utility animate-scale-in {
+  animation: scale-in var(--dur) var(--ease) both;
+}
+
+/* will-change hints for elements that loop transform/opacity animations.
+   Apply to a pulse-ring / bobbing element before it animates. */
+@utility gpu-motion {
+  will-change: transform, opacity;
+}
+
+/* Respect reduced-motion: silence looping/entrance animations. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }
