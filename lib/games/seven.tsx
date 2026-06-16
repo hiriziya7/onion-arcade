@@ -2,6 +2,8 @@
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import type { GameProps } from "./types";
+import { PixelPanel } from "@/components/ui/8bit/pixel-panel";
+import { PixelButton } from "@/components/ui/8bit/pixel-button";
 
 const TARGET_MS = 7000;
 
@@ -105,16 +107,17 @@ export function Seven({ onScore, personalBest, disabled }: GameProps) {
     >
       {phase === "ready" && (
         <div className="animate-fade-in flex flex-col items-center gap-6">
-          <p className="arcade-title text-6xl font-black uppercase text-[var(--text)]">
+          <p className="retro arcade-title text-2xl sm:text-3xl uppercase text-[var(--neon-primary)] neon-text-subtle">
             Seven
           </p>
-          <p className="text-base text-[var(--text-muted)]">
+          <div className="h-[3px] w-40 border-b-[3px] border-dashed border-[var(--border-strong)] opacity-50" />
+          <p className="text-base leading-relaxed text-[var(--text-muted)]">
             Stop the clock at exactly{" "}
-            <span className="font-mono text-[var(--text)]">7.000s</span>
+            <span className="retro text-[0.7rem] text-[var(--text)]">7.000s</span>
           </p>
-          <p className="text-sm text-[var(--text-muted)]">
+          <p className="retro text-[0.6rem] uppercase tracking-wider text-[var(--text-muted)]">
             Press{" "}
-            <kbd className="rounded-sm border-[0.5px] border-[var(--border-subtle)] bg-[var(--surface)] px-2 py-0.5 font-mono">
+            <kbd className="retro rounded-none border-y-[3px] border-[var(--border-strong)] bg-[var(--surface)] px-2 py-1 text-[0.6rem] uppercase text-[var(--text)]">
               SPACE
             </kbd>{" "}
             or tap to start
@@ -125,10 +128,10 @@ export function Seven({ onScore, personalBest, disabled }: GameProps) {
       {phase === "running" && (
         <div className="animate-fade-in relative flex h-56 w-56 items-center justify-center">
           <PulseRing />
-          <span className="arcade-title relative text-[7rem] sm:text-[9rem] font-black leading-none text-[var(--text)]">
+          <span className="arcade-title retro relative text-[5rem] sm:text-[7rem] leading-none text-[var(--neon-primary)] neon-text-subtle">
             7
           </span>
-          <span className="absolute -bottom-6 text-xs uppercase tracking-[0.3em] text-[var(--text-muted)]">
+          <span className="absolute -bottom-8 retro text-[0.6rem] uppercase tracking-[0.2em] text-[var(--text-muted)]">
             tap to stop
           </span>
         </div>
@@ -136,50 +139,57 @@ export function Seven({ onScore, personalBest, disabled }: GameProps) {
 
       {phase === "result" && (
         <div className="animate-rise-in flex flex-col items-center gap-6">
-          <p
-            className="arcade-title text-2xl font-semibold uppercase tracking-[0.18em]"
-            style={{ color: rating.color }}
+          <PixelPanel
+            tone="text-[var(--neon-primary)]"
+            className="flex flex-col items-center gap-5 px-8 py-6"
           >
-            {rating.label}
-          </p>
-          <p className="font-mono text-5xl font-bold text-[var(--text)]">
-            {(elapsedMs / 1000).toFixed(3)}
-            <span className="text-2xl text-[var(--text-muted)]">s</span>
-          </p>
-          <p
-            className="font-mono text-sm"
-            style={{ color: rating.color }}
-          >
-            {Math.round(delta)} ms off target
-          </p>
-
-          {/* accuracy meter — color conveys feedback, no glow */}
-          <div className="h-1.5 w-56 overflow-hidden rounded-full border-[0.5px] border-[var(--border-subtle)] bg-[var(--bg-deep)]">
-            <div
-              className="h-full rounded-full transition-[width] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
-              style={{
-                width: `${accuracy}%`,
-                background: rating.color,
-              }}
-            />
-          </div>
-
-          {isNewBest && (
-            <p className="text-sm font-medium uppercase tracking-wide text-[var(--highlight)]">
-              New personal best
+            <p
+              className="retro arcade-title text-lg sm:text-xl uppercase tracking-[0.12em] neon-text-subtle"
+              style={{ color: rating.color }}
+            >
+              {rating.label}
             </p>
-          )}
+            <div className="pixel-divider w-full opacity-50" />
+            <p className="retro text-3xl sm:text-4xl leading-none text-[var(--text)]">
+              {(elapsedMs / 1000).toFixed(3)}
+              <span className="retro text-base text-[var(--text-muted)]">s</span>
+            </p>
+            <p
+              className="retro text-[0.6rem] uppercase tracking-wider"
+              style={{ color: rating.color }}
+            >
+              {Math.round(delta)} ms off target
+            </p>
 
-          <button
+            {/* accuracy meter — sharp pixel bar with dashed frame */}
+            <div className="w-56 border-[3px] border-dashed border-[var(--border-strong)] bg-[var(--bg-deep)] p-[3px]">
+              <div
+                className="h-2 transition-[width] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+                style={{
+                  width: `${accuracy}%`,
+                  background: rating.color,
+                }}
+              />
+            </div>
+
+            {isNewBest && (
+              <span className="pixel-badge retro text-[0.5rem] tracking-wider text-[var(--highlight)]">
+                New personal best
+              </span>
+            )}
+          </PixelPanel>
+
+          <PixelButton
             type="button"
+            variant="outline"
             onClick={(e) => {
               e.stopPropagation();
               reset();
             }}
-            className="mt-2 rounded-lg border-[0.5px] border-[var(--border-strong)] bg-transparent px-6 py-2 text-sm font-medium uppercase tracking-wider text-[var(--text)] transition-[color,background-color,border-color] duration-[180ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-[var(--neon-primary)] hover:text-[var(--neon-primary)] focus-visible:ring-2 focus-visible:ring-[var(--neon-primary)] focus-visible:ring-offset-2 focus-visible:outline-none"
+            style={{ ["--pixel-edge"]: "var(--neon-primary)" } as React.CSSProperties}
           >
             Play again
-          </button>
+          </PixelButton>
         </div>
       )}
     </div>

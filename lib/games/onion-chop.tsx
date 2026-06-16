@@ -346,6 +346,7 @@ export function OnionChop({ onScore, personalBest, disabled }: GameProps) {
               <span className="retro text-3xl sm:text-4xl leading-none text-[var(--text)]">
                 {score}
               </span>
+              <div className="pixel-divider w-full" aria-hidden="true" />
               <span className="retro text-[0.6rem] uppercase tracking-wider text-[var(--text-muted)]">
                 Best combo {bestCombo} · {accuracy}% on target
               </span>
@@ -356,9 +357,9 @@ export function OnionChop({ onScore, personalBest, disabled }: GameProps) {
           </PixelPanel>
 
           {isNewBest && (
-            <p className="retro text-[0.6rem] uppercase tracking-wider text-[var(--highlight)] neon-text-xs">
+            <span className="pixel-badge retro text-[0.5rem] text-[var(--neon-yellow)] neon-text-xs">
               New personal best
-            </p>
+            </span>
           )}
 
           <PixelButton

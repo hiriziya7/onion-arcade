@@ -55,10 +55,18 @@ export function GameGrid() {
 
                 {/* Footer */}
                 <div className="flex items-end justify-between gap-4">
-                  <div className="space-y-2">
-                    <h3 className="retro text-sm leading-tight text-[var(--text)]">
-                      {game.name}
+                  <div className="min-w-0 space-y-2">
+                    <h3 className="retro flex items-center gap-2 text-sm leading-tight text-[var(--text)]">
+                      <span aria-hidden="true" className="text-[var(--card-neon)]">
+                        &gt;
+                      </span>
+                      <span className="truncate">{game.name}</span>
+                      <span
+                        aria-hidden="true"
+                        className="ml-auto h-2 w-2 shrink-0 bg-[var(--card-neon)] opacity-70 transition-opacity duration-[240ms] group-hover:opacity-100"
+                      />
                     </h3>
+                    <div aria-hidden="true" className="pixel-divider" />
                     <p className="text-sm leading-snug text-[var(--text-muted)]">
                       {game.tagline}
                     </p>

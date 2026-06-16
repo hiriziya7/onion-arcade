@@ -19,7 +19,7 @@ export function SevenPreview() {
     <PreviewFrame>
       <span
         aria-hidden="true"
-        className="pixelated gpu-motion retro text-5xl leading-none text-[var(--text)] transition-[color] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:text-[var(--neon-primary)]"
+        className="pixelated gpu-motion retro neon-text-subtle text-5xl leading-none text-[var(--text-muted)] transition-[color] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:text-[var(--neon-primary)]"
         style={{ animation: "seven-bob 3.6s steps(4, end) infinite" }}
       >
         7
@@ -51,15 +51,15 @@ export function OnionChopPreview() {
 export function LightsOutPreview() {
   return (
     <PreviewFrame>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 border-y-[3px] border-[var(--surface-elevated)] bg-[var(--bg-deep)] px-4 py-3">
         {Array.from({ length: 5 }).map((_, i) => (
           <span
             key={i}
             aria-hidden="true"
             className={
-              "pixelated gpu-motion h-4 w-4 rounded-none bg-[var(--surface-elevated)] transition-[background-color] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] " +
+              "pixelated gpu-motion h-4 w-4 rounded-none bg-[var(--surface-elevated)] transition-[background-color,box-shadow] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] " +
               (i % 2 === 0
-                ? "group-hover:bg-[var(--neon-red)]"
+                ? "group-hover:bg-[var(--neon-red)] group-hover:shadow-[0_0_8px_var(--neon-red)]"
                 : "group-hover:bg-[var(--text-muted)]")
             }
             style={{ transitionDelay: `${i * 50}ms` }}

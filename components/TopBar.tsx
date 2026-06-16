@@ -1,32 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { PixelButton } from "@/components/ui/8bit/pixel-button";
 import { usePlayer } from "@/components/PlayerProvider";
 
 export function TopBar() {
   const { balance, loading } = usePlayer();
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--bg-deep)]/80 px-4 backdrop-blur-md md:px-6">
+    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b-[3px] border-dashed border-[var(--border-strong)] bg-[var(--bg-deep)] px-4 md:px-6">
       <Link
         href="/"
-        className="arcade-title text-lg font-semibold text-[var(--text-muted)] transition-[color] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:text-[var(--text)]"
+        className="retro text-sm uppercase text-[var(--neon-primary)] neon-text-subtle transition-[opacity] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:opacity-80"
       >
-        OnionDAO
+        [ ONIONDAO ]
       </Link>
 
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 rounded-sm border-[0.5px] border-[var(--border-subtle)] bg-[var(--surface)] px-2.5 py-1 text-xs">
+        <div className="flex items-center gap-2 border-[3px] border-[var(--onion)] bg-[var(--surface)] px-2.5 py-1">
           <span aria-hidden>🧅</span>
-          <span className="font-mono font-medium text-[var(--onion)] neon-text-subtle">
+          <span className="retro text-[0.6rem] text-[var(--onion)] neon-text-subtle">
             {loading ? "—" : balance}
           </span>
         </div>
 
-        <Button variant="ghost" size="sm" disabled>
+        <PixelButton variant="ghost" disabled>
           Connect Wallet — soon
-        </Button>
+        </PixelButton>
       </div>
     </header>
   );

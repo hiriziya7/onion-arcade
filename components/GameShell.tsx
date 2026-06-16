@@ -7,7 +7,8 @@ import type { ArcadeGame, GlowColor } from "@/lib/games/types";
 import { usePlayer } from "@/components/PlayerProvider";
 import { PersonalBest } from "@/components/PersonalBest";
 import { LeaderboardDrawer } from "@/components/LeaderboardDrawer";
-import { Button } from "@/components/ui/button";
+import { PixelButton } from "@/components/ui/8bit/pixel-button";
+import { PixelPanel } from "@/components/ui/8bit/pixel-panel";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -44,19 +45,21 @@ export function GameShell({ game }: GameShellProps) {
 
   const accent = glowVar[game.glow];
 
-  const fetchPersonalBest = useCallback(async () => {
-    const res = await fetch(
-      `/api/scores?gameId=${game.id}&playerId=${playerId}&personalBest=1`
-    );
-    if (res.ok) {
-      const data = await res.json();
-      setPersonalBest(data.personalBest);
-    }
-  }, [game.id, playerId]);
-
   useEffect(() => {
-    fetchPersonalBest();
-  }, [fetchPersonalBest]);
+    let cancelled = false;
+    (async () => {
+      const res = await fetch(
+        `/api/scores?gameId=${game.id}&playerId=${playerId}&personalBest=1`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (!cancelled) setPersonalBest(data.personalBest);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [game.id, playerId]);
 
   const submitScore = useCallback(
     async (
@@ -113,29 +116,37 @@ export function GameShell({ game }: GameShellProps) {
   return (
     <div className="relative mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-5 md:py-8">
       {/* Top controls */}
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <Link
-          href="/"
-          className="flex items-center gap-1 text-sm text-[var(--text-muted)] transition-[color] duration-[180ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:text-[var(--text)]"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Arcade
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <Link href="/" aria-label="Back to Arcade">
+          <PixelButton
+            variant="ghost"
+            className="retro text-[0.6rem] tracking-wider"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            Arcade
+          </PixelButton>
         </Link>
 
-        <h1 className="arcade-title hidden text-lg font-medium uppercase text-[var(--text-muted)] sm:block">
+        <h1
+          className="retro hidden text-[0.7rem] uppercase tracking-wider neon-text-subtle sm:block"
+          style={{ color: accent }}
+        >
           {game.name}
         </h1>
 
-        <Button
+        <PixelButton
           variant="outline"
-          size="sm"
           onClick={() => setDrawerOpen(true)}
-          className="gap-1.5"
+          className="retro text-[0.6rem] tracking-wider"
+          style={{ ["--pixel-edge" as string]: accent }}
         >
-          <Trophy className="h-3.5 w-3.5 text-[var(--onion)]" />
+          <Trophy className="h-3.5 w-3.5" />
           Leaderboard
-        </Button>
+        </PixelButton>
       </div>
+
+      {/* Header rule */}
+      <div className="pixel-divider mb-6" aria-hidden="true" />
 
       {/* Personal best banner */}
       <div className="mb-6 flex justify-center">
@@ -149,26 +160,24 @@ export function GameShell({ game }: GameShellProps) {
         }`}
         aria-hidden={drawerOpen}
       >
-        <div
-          className="group relative flex flex-1 items-stretch overflow-hidden rounded-[var(--radius)] border bg-[var(--bg-deep)]"
-          style={{
-            borderColor: accent,
-            boxShadow: `0 0 40px -12px ${accent}, inset 0 0 40px -30px ${accent}`,
-          }}
+        <PixelPanel
+          tone="text-current"
+          className="group flex flex-1 items-stretch overflow-hidden !bg-[var(--bg-deep)]"
+          style={{ color: accent }}
         >
           {/* corner brackets */}
           {(
             [
-              "left-3 top-3 border-l border-t",
-              "right-3 top-3 border-r border-t",
-              "left-3 bottom-3 border-l border-b",
-              "right-3 bottom-3 border-r border-b",
+              "left-3 top-3 border-l-[3px] border-t-[3px]",
+              "right-3 top-3 border-r-[3px] border-t-[3px]",
+              "left-3 bottom-3 border-l-[3px] border-b-[3px]",
+              "right-3 bottom-3 border-r-[3px] border-b-[3px]",
             ] as const
           ).map((pos) => (
             <span
               key={pos}
               aria-hidden
-              className={`pointer-events-none absolute h-5 w-5 rounded-[3px] ${pos}`}
+              className={`pointer-events-none absolute z-20 h-4 w-4 ${pos}`}
               style={{ borderColor: accent, opacity: 0.65 }}
             />
           ))}
@@ -178,9 +187,12 @@ export function GameShell({ game }: GameShellProps) {
             personalBest={personalBest}
             disabled={drawerOpen || submitting || handlePromptOpen}
           />
-        </div>
+        </PixelPanel>
 
-        <p className="mt-4 text-center text-xs text-[var(--text-muted)]">
+        <p className="mt-5 text-center text-base leading-relaxed text-[var(--text-muted)]">
+          <span className="retro mr-2 text-[0.6rem] text-[var(--text-faint)]">
+            {">"}
+          </span>
           {game.objective}
         </p>
       </div>
@@ -194,13 +206,13 @@ export function GameShell({ game }: GameShellProps) {
       <Dialog open={handlePromptOpen} onOpenChange={setHandlePromptOpen}>
         <DialogContent
           showCloseButton={false}
-          className="!bg-[var(--glass-bg)] !border !border-[var(--glass-border)] animate-scale-in gap-6 rounded-[var(--radius)]"
+          className="animate-scale-in gap-6 rounded-none !border-[3px] !border-[var(--neon-primary)] !bg-[var(--surface)]"
         >
           <DialogHeader>
-            <DialogTitle className="arcade-title text-[var(--text)]">
+            <DialogTitle className="retro text-xs uppercase tracking-wider neon-text-subtle text-[var(--neon-primary)]">
               Enter your initials
             </DialogTitle>
-            <DialogDescription className="text-[var(--text-muted)]">
+            <DialogDescription className="text-base leading-relaxed text-[var(--text-muted)]">
               Set your name to appear on the leaderboard.
             </DialogDescription>
           </DialogHeader>
@@ -209,18 +221,21 @@ export function GameShell({ game }: GameShellProps) {
             onChange={(e) => setHandleInput(e.target.value)}
             placeholder="Your handle"
             maxLength={32}
-            className="border-[var(--border-subtle)] bg-[var(--bg)] text-[var(--text)]"
+            className="rounded-none border-[3px] border-[var(--border-strong)] bg-[var(--bg)] text-[var(--text)]"
             onKeyDown={(e) => {
               if (e.key === "Enter") handleHandleSubmit();
             }}
           />
-          <DialogFooter className="!bg-transparent border-t-[0.5px] border-[var(--border-subtle)] pt-4">
-            <Button
+          <DialogFooter className="!bg-transparent border-t-[3px] border-dashed border-[var(--border-strong)] pt-4 opacity-100">
+            <PixelButton
+              variant="solid"
               onClick={handleHandleSubmit}
               disabled={!handleInput.trim() || submitting}
+              className="retro text-[0.6rem] tracking-wider"
+              style={{ ["--pixel-edge" as string]: "var(--neon-primary)" }}
             >
               Save & submit score
-            </Button>
+            </PixelButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
