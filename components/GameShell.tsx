@@ -176,6 +176,7 @@ export function GameShell({ game }: GameShellProps) {
         <PixelPanel
           tone="text-current"
           className="group flex flex-1 items-stretch overflow-hidden !bg-[var(--bg-deep)]"
+          contentClassName="flex flex-1"
           style={{ color: accent }}
         >
           {/* corner brackets */}

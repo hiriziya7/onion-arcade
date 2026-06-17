@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
  */
 function PixelPanel({
   className,
+  contentClassName,
   children,
   tone,
   dashed = false,
@@ -27,6 +28,14 @@ function PixelPanel({
   tone?: string;
   /** Use a dashed pixel frame instead of the solid one. */
   dashed?: boolean;
+  /**
+   * Extra classes on the INNER content wrapper. The panel's flex/sizing classes
+   * (`className`) land on the outer element, so when a panel is used as a flex /
+   * full-bleed container (e.g. the game cabinet) the inner wrapper must be told
+   * to fill — pass e.g. "flex flex-1" so children can stretch instead of
+   * collapsing to content width.
+   */
+  contentClassName?: string;
 }) {
   return (
     <div
@@ -39,7 +48,9 @@ function PixelPanel({
       )}
       {...props}
     >
-      <div className="relative z-10 text-[var(--text)]">{children}</div>
+      <div className={cn("relative z-10 text-[var(--text)]", contentClassName)}>
+        {children}
+      </div>
       <div
         aria-hidden="true"
         className={cn(

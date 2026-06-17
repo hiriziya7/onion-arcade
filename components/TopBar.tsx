@@ -33,7 +33,7 @@ export function TopBar() {
   }, [balance]);
 
   return (
-    <header className="sticky top-0 z-40 grid h-14 shrink-0 grid-cols-3 items-center border-b-[3px] border-dashed border-[var(--border-strong)] bg-[var(--bg-deep)] px-4 md:px-6">
+    <header className="sticky top-0 z-40 grid h-14 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-b-[3px] border-dashed border-[var(--border-strong)] bg-[var(--bg-deep)] px-4 md:px-6">
       {/* Left: brand + mode */}
       <div className="flex items-center gap-2.5 justify-self-start">
         <Link
