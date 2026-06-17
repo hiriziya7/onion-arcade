@@ -38,6 +38,10 @@ export default function RootLayout({
     >
       <body className="arcade-bg relative flex min-h-full flex-col text-[var(--text)]">
         <ShaderBackground />
+        <div
+          aria-hidden
+          className="scanlines pointer-events-none fixed inset-0 z-50 opacity-30 mix-blend-overlay"
+        />
         <PlayerProvider>
           <TopBar />
           {children}

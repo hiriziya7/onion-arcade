@@ -12,11 +12,9 @@ export function PersonalBest({ game, value }: PersonalBestProps) {
     value === null ? "—" : `${Math.round(value)} ${game.scoreLabel}`;
 
   return (
-    <div className="flex items-center gap-3 rounded-[var(--radius)] border-[0.5px] border-[var(--border-subtle)] px-4 py-2 text-sm">
-      <span className="text-[10px] uppercase tracking-[0.25em] text-[var(--text-muted)]">
-        Best
-      </span>
-      <span className="font-semibold text-[var(--text)]">{display}</span>
+    <div className="pixel-badge retro text-[0.6rem] text-[var(--neon-primary)]">
+      <span className="tracking-wider">Best</span>
+      <span className="text-[var(--text)]">{display}</span>
     </div>
   );
 }

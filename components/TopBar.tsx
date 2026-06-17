@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { PixelButton } from "@/components/ui/8bit/pixel-button";
 import { usePlayer } from "@/components/PlayerProvider";
 import { TopUpDialog } from "@/components/TopUpDialog";
 import { CashOutDialog } from "@/components/CashOutDialog";
@@ -33,14 +33,14 @@ export function TopBar() {
   }, [balance]);
 
   return (
-    <header className="sticky top-0 z-40 grid h-14 shrink-0 grid-cols-3 items-center border-b border-[var(--border-subtle)] bg-[var(--bg-deep)]/80 px-4 backdrop-blur-md md:px-6">
+    <header className="sticky top-0 z-40 grid h-14 shrink-0 grid-cols-3 items-center border-b-[3px] border-dashed border-[var(--border-strong)] bg-[var(--bg-deep)] px-4 md:px-6">
       {/* Left: brand + mode */}
       <div className="flex items-center gap-2.5 justify-self-start">
         <Link
           href="/"
-          className="arcade-title text-lg font-semibold text-[var(--text-muted)] transition-[color] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:text-[var(--text)]"
+          className="retro text-sm uppercase text-[var(--neon-primary)] neon-text-subtle transition-[opacity] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:opacity-80"
         >
-          OnionDAO
+          [ ONIONDAO ]
         </Link>
         {configured !== null && (
           <span
@@ -63,25 +63,28 @@ export function TopBar() {
       </div>
 
       {/* Center: the wallet — balance + buy-in / cash-out, the focal action. */}
-      <div className="flex items-center gap-2 justify-self-center rounded-sm border-[0.5px] border-[var(--border-subtle)] bg-[var(--surface)] px-2 py-1">
+      <div className="flex items-center gap-3 justify-self-center">
         {!loading && handle && (
-          <span className="hidden font-mono text-xs font-medium text-[var(--text)] sm:inline">
+          <span className="hidden retro text-[0.55rem] uppercase text-[var(--text)] sm:inline">
             {handle}
           </span>
         )}
-        <span className="flex items-center gap-1 text-xs">
+        <div className="flex items-center gap-2 border-[3px] border-[var(--onion)] bg-[var(--surface)] px-2.5 py-1">
           <span aria-hidden>🧅</span>
-          <span className="font-mono font-medium text-[var(--onion)] neon-text-subtle">
+          <span className="retro text-[0.6rem] text-[var(--onion)] neon-text-subtle">
             {loading ? "—" : balance}
           </span>
-        </span>
-        <Button variant="outline" size="sm" onClick={() => setTopUpOpen(true)}>
+        </div>
+        <PixelButton
+          variant="outline"
+          onClick={() => setTopUpOpen(true)}
+          style={{ ["--pixel-edge" as string]: "var(--neon-primary)" }}
+        >
           Add onions
-        </Button>
+        </PixelButton>
         {configured && (
-          <Button
+          <PixelButton
             variant="ghost"
-            size="sm"
             onClick={() => setCashOutOpen(true)}
             disabled={loading || balance <= 0}
             title={
@@ -91,7 +94,7 @@ export function TopBar() {
             }
           >
             Cash out
-          </Button>
+          </PixelButton>
         )}
       </div>
 
@@ -99,11 +102,11 @@ export function TopBar() {
       <div className="flex items-center gap-3 justify-self-end">
         {configured && prizePool > 0 && (
           <span
-            className="hidden items-center gap-1.5 rounded-sm border-[0.5px] border-[var(--border-subtle)] bg-[var(--surface)] px-2.5 py-1 text-xs sm:flex"
+            className="hidden items-center gap-2 border-[3px] border-[var(--neon-yellow)] bg-[var(--surface)] px-2.5 py-1 sm:flex"
             title="Current tournament prize pool"
           >
             <span aria-hidden>🏆</span>
-            <span className="font-mono font-medium text-[var(--neon-yellow)]">
+            <span className="retro text-[0.6rem] text-[var(--neon-yellow)] neon-text-subtle">
               {prizePool} 🧅
             </span>
           </span>

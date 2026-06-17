@@ -277,23 +277,26 @@ export function OnionChop({ onScore, personalBest, disabled }: GameProps) {
 
       {phase === "playing" && (
         <div className="animate-fade-in flex w-full max-w-md flex-col items-center gap-6">
-          {/* HUD */}
-          <div className="flex w-full items-end justify-between">
-            <div className="flex flex-col items-start">
+          {/* HUD — three pixel readouts framed by a dashed rule */}
+          <div className="flex w-full items-stretch justify-between gap-2 border-b-[3px] border-dashed border-[var(--border-strong)] pb-3">
+            <div className="flex flex-1 flex-col items-start gap-1">
               <span className="retro text-[0.5rem] uppercase tracking-wider text-[var(--text-muted)]">
                 Score
               </span>
               <span className="retro text-base text-[var(--text)]">{score}</span>
             </div>
-            <div className="flex flex-col items-center">
+            <div className="flex flex-1 flex-col items-center gap-1 border-x-[3px] border-dashed border-[var(--border-strong)]">
               <span className="retro text-[0.5rem] uppercase tracking-wider text-[var(--text-muted)]">
                 Combo
               </span>
               <span className="retro text-base text-[var(--neon-yellow)] neon-text-subtle">
-                {combo} <span className="text-[0.7rem]">x{multiplier}</span>
+                {combo}{" "}
+                <span className="text-[0.7rem] text-[var(--neon-yellow)]">
+                  x{multiplier}
+                </span>
               </span>
             </div>
-            <div className="flex flex-col items-end">
+            <div className="flex flex-1 flex-col items-end gap-1">
               <span className="retro text-[0.5rem] uppercase tracking-wider text-[var(--text-muted)]">
                 Chops Left
               </span>
@@ -303,50 +306,58 @@ export function OnionChop({ onScore, personalBest, disabled }: GameProps) {
             </div>
           </div>
 
-          {/* Last result flash */}
+          {/* Last result flash — pixel grade tag that pops on the current hue */}
           <p
-            className="retro h-4 text-[0.6rem] uppercase tracking-[0.2em] neon-text-subtle"
+            className="retro h-4 text-[0.7rem] uppercase tracking-[0.3em] neon-text-subtle"
             style={{ color: lastColor }}
           >
             {lastGrade ?? ""}
           </p>
 
-          {/* Track */}
+          {/* Track — pixel cabinet slot: scanlines, sharp thick frame */}
           <div
-            className="relative h-16 w-full overflow-hidden border-y-[6px] border-[var(--border-strong)] bg-[var(--bg-deep)]"
+            className="scanlines relative h-16 w-full overflow-hidden rounded-none border-y-[6px] border-[var(--border-strong)] bg-[var(--bg-deep)] shadow-[inset_0_0_0_3px_var(--bg-deep)]"
             style={{ imageRendering: "pixelated" }}
           >
-            {/* GOOD band (wider, yellow tint) — follows the moving target */}
+            {/* GOOD band (wider, yellow tint) — follows the moving target.
+                Crisp blocky fill with bright pixel edges, no soft blur. */}
             <div
-              className="absolute top-0 bottom-0"
+              className="absolute top-0 bottom-0 border-x-[3px] border-[var(--neon-yellow)]"
               style={{
                 left: `${target * 100 - goodPct / 2}%`,
                 width: `${goodPct}%`,
                 background: "var(--neon-yellow)",
-                opacity: 0.18,
+                opacity: 0.16,
+                imageRendering: "pixelated",
               }}
               aria-hidden="true"
             />
             {/* PERFECT band (narrow, green tint) — follows the moving target */}
             <div
-              className="absolute top-0 bottom-0"
+              className="absolute top-0 bottom-0 border-x-[3px] border-[var(--neon-primary)]"
               style={{
                 left: `${target * 100 - perfectPct / 2}%`,
                 width: `${perfectPct}%`,
                 background: "var(--neon-primary)",
-                opacity: 0.35,
+                opacity: 0.4,
+                imageRendering: "pixelated",
               }}
               aria-hidden="true"
             />
-            {/* Target line — where you must chop this swing */}
+            {/* Target line — where you must chop this swing. Sharp green core
+                with notch caps top & bottom for a pixel-crisp read. */}
             <div
               className="absolute top-0 bottom-0 w-[3px] -translate-x-1/2 bg-[var(--neon-primary)]"
               style={{
                 left: `${target * 100}%`,
-                boxShadow: "0 0 8px var(--neon-primary)",
+                boxShadow: "0 0 6px var(--neon-primary)",
+                imageRendering: "pixelated",
               }}
               aria-hidden="true"
-            />
+            >
+              <span className="absolute -top-px left-1/2 h-[5px] w-[7px] -translate-x-1/2 bg-[var(--neon-primary)]" />
+              <span className="absolute -bottom-px left-1/2 h-[5px] w-[7px] -translate-x-1/2 bg-[var(--neon-primary)]" />
+            </div>
             {/* Knife marker — bright WHITE bar, easy to track against the
                 yellow GOOD / green PERFECT bands; thin crisp core so you can
                 read the exact frame it crosses center. */}
@@ -381,7 +392,7 @@ export function OnionChop({ onScore, personalBest, disabled }: GameProps) {
 
       {phase === "result" && (
         <div className="animate-rise-in flex flex-col items-center gap-6">
-          <p className="retro text-base sm:text-lg uppercase text-[var(--neon-yellow)] neon-text-subtle">
+          <p className="retro arcade-title text-base sm:text-lg uppercase tracking-[0.12em] text-[var(--neon-yellow)] neon-text-subtle">
             Service Done
           </p>
 
@@ -389,26 +400,33 @@ export function OnionChop({ onScore, personalBest, disabled }: GameProps) {
             tone="text-[var(--neon-yellow)]"
             className="bg-[var(--bg-deep)]"
           >
-            <div className="flex flex-col items-center gap-3 p-6">
+            <div className="flex flex-col items-center gap-3 px-8 py-6">
               <span className="retro text-[0.6rem] uppercase tracking-wider text-[var(--text-muted)]">
                 Final Score
               </span>
-              <span className="retro text-3xl sm:text-4xl leading-none text-[var(--text)]">
+              <span className="retro text-3xl sm:text-4xl leading-none text-[var(--text)] neon-text-subtle">
                 {score}
               </span>
-              <span className="retro text-[0.6rem] uppercase tracking-wider text-[var(--text-muted)]">
+              <div className="pixel-divider w-full" aria-hidden="true" />
+              {/* PERFECT / GOOD tally — pixel pills echoing the track bands */}
+              <div className="flex items-center gap-2">
+                <span className="pixel-badge retro text-[0.5rem] text-[var(--neon-primary)]">
+                  {perfectHits} Perfect
+                </span>
+                <span className="pixel-badge retro text-[0.5rem] text-[var(--neon-yellow)]">
+                  {goodHits} Good
+                </span>
+              </div>
+              <span className="retro text-[0.5rem] uppercase tracking-wider text-[var(--text-muted)]">
                 Best combo {bestCombo} · {accuracy}% on target
-              </span>
-              <span className="retro text-[0.5rem] uppercase tracking-wider text-[var(--text-faint)]">
-                {perfectHits} perfect · {goodHits} good
               </span>
             </div>
           </PixelPanel>
 
           {isNewBest && (
-            <p className="retro text-[0.6rem] uppercase tracking-wider text-[var(--highlight)] neon-text-xs">
+            <span className="pixel-badge retro text-[0.5rem] text-[var(--neon-yellow)] neon-text-xs">
               New personal best
-            </p>
+            </span>
           )}
 
           <PixelButton

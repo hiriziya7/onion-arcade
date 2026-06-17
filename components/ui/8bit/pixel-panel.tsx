@@ -12,21 +12,28 @@ import { cn } from "@/lib/utils";
  *
  * Border color is `currentColor`, so a parent can tint the whole frame neon by
  * passing `tone="text-[var(--neon-…)]"`; the content keeps its own text color.
+ *
+ * Optional `dashed` switches the frame to the OrcDev dashed pixel rule for a
+ * lighter, draft-y panel — purely visual, the notched geometry is unchanged.
  */
 function PixelPanel({
   className,
   children,
   tone,
+  dashed = false,
   ...props
 }: React.ComponentProps<"div"> & {
   /** Border color utility, e.g. "text-[var(--neon-primary)]". */
   tone?: string;
+  /** Use a dashed pixel frame instead of the solid one. */
+  dashed?: boolean;
 }) {
   return (
     <div
       data-slot="pixel-panel"
       className={cn(
         "relative rounded-none border-y-[6px] border-current bg-[var(--surface)]",
+        dashed && "border-dashed",
         tone ?? "text-[var(--border-strong)]",
         className
       )}
@@ -35,7 +42,10 @@ function PixelPanel({
       <div className="relative z-10 text-[var(--text)]">{children}</div>
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-0 -mx-1.5 border-x-[6px] border-inherit"
+        className={cn(
+          "pointer-events-none absolute inset-0 z-0 -mx-1.5 border-x-[6px] border-inherit",
+          dashed && "border-dashed"
+        )}
       />
     </div>
   );

@@ -7,8 +7,8 @@ import type { ArcadeGame, GlowColor } from "@/lib/games/types";
 import { usePlayer } from "@/components/PlayerProvider";
 import { PersonalBest } from "@/components/PersonalBest";
 import { LeaderboardDrawer } from "@/components/LeaderboardDrawer";
-import { Button } from "@/components/ui/button";
 import { PixelButton } from "@/components/ui/8bit/pixel-button";
+import { PixelPanel } from "@/components/ui/8bit/pixel-panel";
 import { GAME_COST } from "@/lib/onions/cost";
 
 interface GameShellProps {
@@ -129,29 +129,37 @@ export function GameShell({ game }: GameShellProps) {
   return (
     <div className="relative mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-5 md:py-8">
       {/* Top controls */}
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <Link
-          href="/"
-          className="flex items-center gap-1 text-sm text-[var(--text-muted)] transition-[color] duration-[180ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:text-[var(--text)]"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Arcade
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <Link href="/" aria-label="Back to Arcade">
+          <PixelButton
+            variant="ghost"
+            className="retro text-[0.6rem] tracking-wider"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            Arcade
+          </PixelButton>
         </Link>
 
-        <h1 className="arcade-title hidden text-lg font-medium uppercase text-[var(--text-muted)] sm:block">
+        <h1
+          className="retro hidden text-[0.7rem] uppercase tracking-wider neon-text-subtle sm:block"
+          style={{ color: accent }}
+        >
           {game.name}
         </h1>
 
-        <Button
+        <PixelButton
           variant="outline"
-          size="sm"
           onClick={() => setDrawerOpen(true)}
-          className="gap-1.5"
+          className="retro text-[0.6rem] tracking-wider"
+          style={{ ["--pixel-edge" as string]: accent }}
         >
-          <Trophy className="h-3.5 w-3.5 text-[var(--onion)]" />
+          <Trophy className="h-3.5 w-3.5" />
           Leaderboard
-        </Button>
+        </PixelButton>
       </div>
+
+      {/* Header rule */}
+      <div className="pixel-divider mb-6" aria-hidden="true" />
 
       {/* Personal best banner */}
       <div className="mb-6 flex justify-center">
@@ -165,26 +173,24 @@ export function GameShell({ game }: GameShellProps) {
         }`}
         aria-hidden={drawerOpen}
       >
-        <div
-          className="group relative flex flex-1 items-stretch overflow-hidden rounded-[var(--radius)] border bg-[var(--bg-deep)]"
-          style={{
-            borderColor: accent,
-            boxShadow: `0 0 40px -12px ${accent}, inset 0 0 40px -30px ${accent}`,
-          }}
+        <PixelPanel
+          tone="text-current"
+          className="group flex flex-1 items-stretch overflow-hidden !bg-[var(--bg-deep)]"
+          style={{ color: accent }}
         >
           {/* corner brackets */}
           {(
             [
-              "left-3 top-3 border-l border-t",
-              "right-3 top-3 border-r border-t",
-              "left-3 bottom-3 border-l border-b",
-              "right-3 bottom-3 border-r border-b",
+              "left-3 top-3 border-l-[3px] border-t-[3px]",
+              "right-3 top-3 border-r-[3px] border-t-[3px]",
+              "left-3 bottom-3 border-l-[3px] border-b-[3px]",
+              "right-3 bottom-3 border-r-[3px] border-b-[3px]",
             ] as const
           ).map((pos) => (
             <span
               key={pos}
               aria-hidden
-              className={`pointer-events-none absolute h-5 w-5 rounded-[3px] ${pos}`}
+              className={`pointer-events-none absolute z-20 h-4 w-4 ${pos}`}
               style={{ borderColor: accent, opacity: 0.65 }}
             />
           ))}
@@ -199,7 +205,7 @@ export function GameShell({ game }: GameShellProps) {
           {/* Coin-slot paywall — covers the stage between rounds. */}
           {!armed && !drawerOpen && (
             <div
-              className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-5 bg-[var(--bg-deep)]/90 backdrop-blur-sm"
+              className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-5 bg-[var(--bg-deep)]/90 backdrop-blur-sm"
               style={{ borderColor: accent }}
             >
               <p className="retro text-center text-sm uppercase text-[var(--text)]">
@@ -210,8 +216,9 @@ export function GameShell({ game }: GameShellProps) {
                 variant="solid"
                 onClick={insertCoin}
                 disabled={inserting}
+                className="retro text-[0.6rem] tracking-wider"
                 style={
-                  { ["--pixel-edge"]: accent } as React.CSSProperties
+                  { ["--pixel-edge" as string]: accent } as React.CSSProperties
                 }
               >
                 {inserting ? "Inserting…" : "Insert coin"}
@@ -223,6 +230,7 @@ export function GameShell({ game }: GameShellProps) {
                   variant="ghost"
                   onClick={freePlay}
                   disabled={inserting}
+                  className="retro text-[0.6rem] tracking-wider"
                 >
                   Free play (debug)
                 </PixelButton>
@@ -237,9 +245,12 @@ export function GameShell({ game }: GameShellProps) {
               )}
             </div>
           )}
-        </div>
+        </PixelPanel>
 
-        <p className="mt-4 text-center text-xs text-[var(--text-muted)]">
+        <p className="mt-5 text-center text-base leading-relaxed text-[var(--text-muted)]">
+          <span className="retro mr-2 text-[0.6rem] text-[var(--text-faint)]">
+            {">"}
+          </span>
           {game.objective}
         </p>
       </div>

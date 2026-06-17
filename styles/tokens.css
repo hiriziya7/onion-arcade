@@ -50,10 +50,17 @@
   --highlight: oklch(0.84 0.13 205);      /* "you" / self emphasis */
 
   /* --------------------------------------------------------------------------
-     RADIUS SCALE — consistent rounding. 12px base.
+     RADIUS — pixel-art arcade: SHARP corners everywhere. Zero radius is the
+     foundation rule; the pill token is kept only for the rare capsule.
   -------------------------------------------------------------------------- */
-  --radius: 0.75rem;                      /* 12px — cards, dialogs */
+  --radius: 0;                            /* sharp — 8-bit frames, buttons */
   --radius-pill: 999px;
+
+  /* --------------------------------------------------------------------------
+     PIXEL UNITS — chunky 6px frame quantum used by panels/buttons/dividers.
+  -------------------------------------------------------------------------- */
+  --px: 3px;
+  --px-2: 6px;
 
   /* --------------------------------------------------------------------------
      MOTION — calm, physical, ease-out. No bounce, no flashing.

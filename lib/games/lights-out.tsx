@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { PixelPanel } from "@/components/ui/8bit/pixel-panel";
+import { PixelButton } from "@/components/ui/8bit/pixel-button";
 import type { GameProps } from "./types";
 
 type Phase = "ready" | "sequence" | "hold" | "go" | "falseStart" | "result";
@@ -150,21 +152,27 @@ export function LightsOut({ onScore, personalBest, disabled }: GameProps) {
       }`}
     >
       {phase === "ready" && (
-        <div className="flex flex-col items-center gap-4 animate-fade-in">
-          <p className="arcade-title text-5xl font-bold uppercase text-[var(--text)]">
-            Lights Out
-          </p>
-          <p className="text-base text-[var(--text-muted)]">
-            React the instant the lights go dark
-          </p>
-          <p className="mt-2 text-sm text-[var(--text-faint)]">
-            Press{" "}
-            <kbd className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface)] px-2 py-0.5 font-mono text-[var(--text-muted)]">
-              SPACE
-            </kbd>{" "}
-            or tap to start
-          </p>
-        </div>
+        <PixelPanel
+          tone="text-[var(--neon-red)]"
+          className="animate-fade-in"
+        >
+          <div className="flex flex-col items-center gap-4 p-8">
+            <p className="retro neon-text-subtle text-2xl uppercase text-[var(--neon-red)]">
+              Lights Out
+            </p>
+            <div aria-hidden="true" className="pixel-divider w-full" />
+            <p className="text-base leading-relaxed text-[var(--text-muted)]">
+              React the instant the lights go dark
+            </p>
+            <p className="retro mt-2 text-[0.6rem] uppercase tracking-wider text-[var(--text-faint)]">
+              Press{" "}
+              <kbd className="border-y-[3px] border-[var(--border-strong)] bg-[var(--surface)] px-2 py-0.5 retro text-[0.6rem] uppercase text-[var(--text-muted)]">
+                SPACE
+              </kbd>{" "}
+              or tap to start
+            </p>
+          </div>
+        </PixelPanel>
       )}
 
       {showLights && (
@@ -174,13 +182,13 @@ export function LightsOut({ onScore, personalBest, disabled }: GameProps) {
             return (
               <div
                 key={i}
-                className="h-14 w-14 rounded-full border-[0.5px] transition-[background-color,border-color,box-shadow] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+                className="pixelated h-14 w-14 rounded-none border-[3px] transition-[background-color,border-color,box-shadow] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
                 style={{
-                  borderColor: lit ? "var(--neon-red)" : "var(--border-subtle)",
+                  borderColor: lit ? "var(--neon-red)" : "var(--border-strong)",
                   backgroundColor: lit ? "var(--neon-red)" : "var(--surface)",
                   boxShadow: lit
-                    ? "inset 0 0 0 1px var(--neon-red), 0 0 16px var(--neon-red)"
-                    : "0 0 0 0.5px var(--border-subtle)",
+                    ? "4px 4px 0 0 #000, 0 0 16px var(--neon-red)"
+                    : "4px 4px 0 0 #000",
                 }}
               />
             );
@@ -189,71 +197,84 @@ export function LightsOut({ onScore, personalBest, disabled }: GameProps) {
       )}
 
       {phase === "go" && (
-        <p className="arcade-title text-7xl font-bold uppercase text-[var(--neon-primary)] animate-scale-in">
+        <p className="retro neon-text-subtle text-5xl uppercase text-[var(--neon-primary)] animate-scale-in">
           GO
         </p>
       )}
 
       {phase === "falseStart" && (
-        <div className="flex flex-col items-center gap-4 animate-fade-in">
-          <p className="arcade-title text-5xl font-bold uppercase text-[var(--neon-red)]">
-            Jump Start
-          </p>
-          <p className="text-sm text-[var(--text-muted)]">
-            You went before the lights died.
-          </p>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              reset();
-            }}
-            className="mt-2 rounded-lg border border-[var(--border-strong)] bg-transparent px-6 py-2 text-sm font-medium uppercase tracking-wider text-[var(--text)] transition-[color,background-color,border-color] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-[var(--neon-red)] hover:text-[var(--neon-red)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neon-red)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]"
-          >
-            Back to grid
-          </button>
-        </div>
+        <PixelPanel
+          tone="text-[var(--neon-red)]"
+          className="animate-fade-in"
+        >
+          <div className="flex flex-col items-center gap-4 p-8">
+            <p className="retro neon-text-subtle text-2xl uppercase text-[var(--neon-red)]">
+              Jump Start
+            </p>
+            <div aria-hidden="true" className="pixel-divider w-full" />
+            <p className="text-base leading-relaxed text-[var(--text-muted)]">
+              You went before the lights died.
+            </p>
+            <PixelButton
+              type="button"
+              variant="outline"
+              style={{ ["--pixel-edge" as string]: "var(--neon-red)" }}
+              className="mt-2"
+              onClick={(e) => {
+                e.stopPropagation();
+                reset();
+              }}
+            >
+              Back to grid
+            </PixelButton>
+          </div>
+        </PixelPanel>
       )}
 
       {phase === "result" && (
-        <div className="flex flex-col items-center gap-4 animate-rise-in">
-          <p
-            className="text-sm font-medium uppercase tracking-wide text-[var(--text-muted)]"
-          >
-            {rating.label}
-          </p>
-          <p
-            style={{ color: rating.color }}
-            className="font-mono text-7xl font-semibold"
-          >
-            {Math.round(reactionMs)}
-            <span className="ml-1 text-2xl font-normal text-[var(--text-muted)]">
-              ms
-            </span>
-          </p>
-
-          {isNewBest && (
-            <p className="flex items-center gap-2 text-sm font-medium uppercase tracking-wide text-[var(--text-muted)]">
-              <span
-                className="inline-block h-1.5 w-1.5 rounded-full"
-                style={{ backgroundColor: "var(--neon-accent)" }}
-                aria-hidden="true"
-              />
-              New personal best
+        <PixelPanel
+          tone="text-[var(--neon-red)]"
+          className="animate-rise-in"
+        >
+          <div className="flex flex-col items-center gap-4 p-8">
+            <p
+              className="retro text-[0.6rem] uppercase tracking-wider"
+              style={{ color: rating.color }}
+            >
+              {rating.label}
             </p>
-          )}
+            <p
+              style={{ color: rating.color }}
+              className="retro text-4xl"
+            >
+              {Math.round(reactionMs)}
+              <span className="ml-2 retro text-sm text-[var(--text-muted)]">
+                ms
+              </span>
+            </p>
 
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              reset();
-            }}
-            className="mt-2 rounded-lg border border-[var(--border-strong)] bg-transparent px-6 py-2 text-sm font-medium uppercase tracking-wider text-[var(--text)] transition-[color,background-color,border-color] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-[var(--neon-primary)] hover:text-[var(--neon-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neon-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]"
-          >
-            Play again
-          </button>
-        </div>
+            {isNewBest && (
+              <p className="pixel-badge retro text-[0.5rem] tracking-wider text-[var(--neon-red)]">
+                New personal best
+              </p>
+            )}
+
+            <div aria-hidden="true" className="pixel-divider w-full" />
+
+            <PixelButton
+              type="button"
+              variant="solid"
+              style={{ ["--pixel-edge" as string]: "var(--neon-red)" }}
+              className="mt-2"
+              onClick={(e) => {
+                e.stopPropagation();
+                reset();
+              }}
+            >
+              Play again
+            </PixelButton>
+          </div>
+        </PixelPanel>
       )}
     </div>
   );
