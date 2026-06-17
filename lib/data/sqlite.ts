@@ -3,7 +3,11 @@ import path from "path";
 import fs from "fs";
 import { REASON } from "@/lib/onions/reasons";
 import type {
+  AdminLeaderboardEntry,
+  ArcadeEvent,
+  ArcadePoolRepo,
   DataRepos,
+  HistoryEntry,
   Deposit,
   DepositRepo,
   LeaderboardEntry,
@@ -13,6 +17,7 @@ import type {
   PlayerRepo,
   Score,
   ScoreRepo,
+  Winner,
   Withdrawal,
   WithdrawalRepo,
 } from "./repo";
@@ -104,6 +109,42 @@ function migrate(database: Database.Database): void {
 
     CREATE INDEX IF NOT EXISTS idx_withdrawals_player ON withdrawals(player_id);
     CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON withdrawals(status);
+
+    -- Onion Arcade admin-dashboard economy (separate from the escrow model
+    -- above). Append-only event log; pool & dev balances are DERIVED by folding
+    -- these events together with the onion-chop play rows from the ledger, in
+    -- timestamp order (see lib/arcade/pool.ts). kind: 'add' (admin tops up the
+    -- pool), 'payout' (top-3 prize, drains pool), 'devsend' (manual dev draw).
+    -- spent_at = total onion-chop onions spent at the moment the event was
+    -- recorded. The fold segments plays by this COUNT (not by timestamp) so
+    -- same-second collisions between plays and events can't misorder anything.
+    -- game_id segregates the per-game pools; NULL for aggregate dev-send events.
+    CREATE TABLE IF NOT EXISTS arcade_events (
+      id TEXT PRIMARY KEY,
+      kind TEXT NOT NULL,
+      amount INTEGER NOT NULL,
+      spent_at INTEGER NOT NULL DEFAULT 0,
+      game_id TEXT,
+      payout_id TEXT,
+      recipient TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_arcade_events_kind ON arcade_events(kind);
+    CREATE INDEX IF NOT EXISTS idx_arcade_events_game ON arcade_events(game_id, spent_at);
+
+    -- One row per winner per 'pay out top 3' (grouped by payout_id) for the
+    -- Winners panel.
+    CREATE TABLE IF NOT EXISTS arcade_winners (
+      id TEXT PRIMARY KEY,
+      payout_id TEXT NOT NULL,
+      rank INTEGER NOT NULL,
+      handle TEXT,
+      amount INTEGER NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_arcade_winners_payout ON arcade_winners(payout_id);
   `);
 
   // Forward hook for the future "connect your OnionDAO badge" feature: a
@@ -119,6 +160,43 @@ function migrate(database: Database.Database): void {
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_players_badge
        ON players(badge_id) WHERE badge_id IS NOT NULL;`
   );
+
+  // Player-level moderation flag (anti-spoofing): a flagged player is excluded
+  // from the public leaderboard AND the top-3 payout — including ANY future
+  // scores they submit (the flag is on the player, not individual score rows).
+  // Reversible. Added via ALTER for clean upgrades.
+  const playerModCols = database
+    .prepare("PRAGMA table_info(players)")
+    .all() as Array<{ name: string }>;
+  if (!playerModCols.some((c) => c.name === "flagged_at")) {
+    database.exec("ALTER TABLE players ADD COLUMN flagged_at TEXT");
+  }
+
+  // Recipient (OnionDAO username) for dev-send arcade events, so payout history
+  // can show who was paid. Nullable; older rows stay NULL.
+  const aeCols = database
+    .prepare("PRAGMA table_info(arcade_events)")
+    .all() as Array<{ name: string }>;
+  if (!aeCols.some((c) => c.name === "recipient")) {
+    database.exec("ALTER TABLE arcade_events ADD COLUMN recipient TEXT");
+  }
+  // Per-game segregation. Backfill existing rows to onion-chop (the only game
+  // the previous single-pool code ever wrote), preserving that pool.
+  if (!aeCols.some((c) => c.name === "game_id")) {
+    database.exec("ALTER TABLE arcade_events ADD COLUMN game_id TEXT");
+    database.exec(
+      "UPDATE arcade_events SET game_id = 'onion-chop' WHERE game_id IS NULL AND kind != 'devsend'"
+    );
+  }
+
+  // game_id on deposits so an admin pool-seed deposit (player_id NULL) knows
+  // which game's pool it feeds.
+  const depCols = database
+    .prepare("PRAGMA table_info(deposits)")
+    .all() as Array<{ name: string }>;
+  if (!depCols.some((c) => c.name === "game_id")) {
+    database.exec("ALTER TABLE deposits ADD COLUMN game_id TEXT");
+  }
 }
 
 function generateId(): string {
@@ -187,6 +265,18 @@ function createPlayerRepo(database: Database.Database): PlayerRepo {
         .prepare("SELECT * FROM players WHERE id = ?")
         .get(id) as Player;
     },
+
+    // Flag / unflag a player for moderation. A flagged player (and every score
+    // they have or later post) is excluded from the public board and payouts.
+    setFlagged(id: string, flagged: boolean): void {
+      database
+        .prepare(
+          flagged
+            ? "UPDATE players SET flagged_at = datetime('now') WHERE id = ? AND flagged_at IS NULL"
+            : "UPDATE players SET flagged_at = NULL WHERE id = ?"
+        )
+        .run(id);
+    },
   };
 }
 
@@ -251,6 +341,42 @@ function createLedgerRepo(database: Database.Database): LedgerRepo {
       return row.v;
     },
 
+    // Total onions spent on ONE game (exact reason match). The arcade-dashboard
+    // pool is built only from onion-chop spend.
+    spentTotalForGame(gameId: string): number {
+      const row = database
+        .prepare("SELECT COALESCE(SUM(-delta), 0) as v FROM ledger WHERE reason = ?")
+        .get(REASON.PLAY_PREFIX + gameId) as { v: number };
+      return row.v;
+    },
+
+    // Count of plays of `gameId` in the half-open time window [from, to). null
+    // bounds are open. Used by the arcade-pool fold to count rounds per segment
+    // between admin events.
+    countPlays(gameId: string, from: string | null, to: string | null): number {
+      let sql = "SELECT COUNT(*) as v FROM ledger WHERE reason = ?";
+      const params: string[] = [REASON.PLAY_PREFIX + gameId];
+      if (from !== null) {
+        sql += " AND created_at >= ?";
+        params.push(from);
+      }
+      if (to !== null) {
+        sql += " AND created_at < ?";
+        params.push(to);
+      }
+      return (database.prepare(sql).get(...params) as { v: number }).v;
+    },
+
+    uniquePlayersForGame(gameId: string): number {
+      return (
+        database
+          .prepare(
+            "SELECT COUNT(DISTINCT player_id) as v FROM ledger WHERE reason = ?"
+          )
+          .get(REASON.PLAY_PREFIX + gameId) as { v: number }
+      ).v;
+    },
+
     spend(
       playerId: string,
       amount: number,
@@ -305,17 +431,21 @@ function createScoreRepo(database: Database.Database): ScoreRepo {
       lowerIsBetter: boolean
     ): LeaderboardEntry[] {
       const order = lowerIsBetter ? "ASC" : "DESC";
+      // Each player's entry is their BEST score: MIN when lower-is-better, MAX
+      // otherwise. (Previously MIN unconditionally, which surfaced the WORST
+      // score for higher-is-better games like Onion Chop — wrong for ranking.)
+      const agg = lowerIsBetter ? "MIN" : "MAX";
       const rows = database
         .prepare(
           `
         SELECT
           s.player_id,
           p.handle,
-          MIN(s.value) as value,
+          ${agg}(s.value) as value,
           MIN(s.created_at) as created_at
         FROM scores s
         JOIN players p ON p.id = s.player_id
-        WHERE s.game_id = ?
+        WHERE s.game_id = ? AND p.flagged_at IS NULL
         GROUP BY s.player_id
         ORDER BY value ${order}, created_at ASC
         LIMIT ?
@@ -350,6 +480,60 @@ function createScoreRepo(database: Database.Database): ScoreRepo {
         .get(gameId, playerId) as { best: number | null };
       return row.best;
     },
+
+    // Admin leaderboard: best score + rounds played + total onions spent per
+    // player, INCLUDING hidden players (so the admin can unhide). The public
+    // getTopScores excludes hidden rows.
+    getAdminLeaderboard(
+      gameId: string,
+      limit: number,
+      lowerIsBetter: boolean
+    ): AdminLeaderboardEntry[] {
+      const agg = lowerIsBetter ? "MIN" : "MAX";
+      const order = lowerIsBetter ? "ASC" : "DESC";
+      const rows = database
+        .prepare(
+          `
+        SELECT
+          s.player_id,
+          p.handle,
+          ${agg}(s.value) as best,
+          MIN(s.created_at) as created_at,
+          MAX(CASE WHEN p.flagged_at IS NOT NULL THEN 1 ELSE 0 END) as hidden,
+          COALESCE(l.rounds, 0) as rounds_played,
+          COALESCE(l.spent, 0) as total_spent
+        FROM scores s
+        JOIN players p ON p.id = s.player_id
+        LEFT JOIN (
+          SELECT player_id, COUNT(*) as rounds, SUM(-delta) as spent
+          FROM ledger WHERE reason = ? GROUP BY player_id
+        ) l ON l.player_id = s.player_id
+        WHERE s.game_id = ?
+        GROUP BY s.player_id
+        ORDER BY best ${order}, created_at ASC
+        LIMIT ?
+      `
+        )
+        .all(REASON.PLAY_PREFIX + gameId, gameId, limit) as Array<{
+        player_id: string;
+        handle: string | null;
+        best: number;
+        created_at: string;
+        hidden: number;
+        rounds_played: number;
+        total_spent: number;
+      }>;
+      return rows.map((r, i) => ({
+        rank: i + 1,
+        player_id: r.player_id,
+        handle: r.handle,
+        best: r.best,
+        roundsPlayed: r.rounds_played,
+        totalSpent: r.total_spent,
+        hidden: r.hidden === 1,
+      }));
+    },
+
   };
 }
 
@@ -362,6 +546,20 @@ function createDepositRepo(database: Database.Database): DepositRepo {
           "INSERT INTO deposits (id, player_id, external_id, amount, status) VALUES (?, ?, ?, ?, 'pending')"
         )
         .run(id, playerId, externalId, amount);
+      return database
+        .prepare("SELECT * FROM deposits WHERE id = ?")
+        .get(id) as Deposit;
+    },
+
+    // Admin pool-seed deposit: no player, tagged to a game's pool. Settles into
+    // an arcade 'add' event (not a player credit) via arcadePool.settleSeedOnce.
+    createSeed(externalId: string, amount: number, gameId: string): Deposit {
+      const id = generateId();
+      database
+        .prepare(
+          "INSERT INTO deposits (id, player_id, external_id, amount, status, game_id) VALUES (?, NULL, ?, ?, 'pending', ?)"
+        )
+        .run(id, externalId, amount, gameId);
       return database
         .prepare("SELECT * FROM deposits WHERE id = ?")
         .get(id) as Deposit;
@@ -628,6 +826,156 @@ function createWithdrawalRepo(database: Database.Database): WithdrawalRepo {
   };
 }
 
+function createArcadePoolRepo(database: Database.Database): ArcadePoolRepo {
+  return {
+    // Append a pool event. 'add' (admin top-up, per game), 'devsend' (aggregate
+    // dev draw — gameId null). spentAt is that game's total spend at record time
+    // (the fold's ordering key).
+    addEvent(
+      kind: "add" | "devsend",
+      amount: number,
+      spentAt: number,
+      gameId: string | null,
+      recipient?: string
+    ): ArcadeEvent {
+      const id = generateId();
+      database
+        .prepare(
+          "INSERT INTO arcade_events (id, kind, amount, spent_at, game_id, recipient) VALUES (?, ?, ?, ?, ?, ?)"
+        )
+        .run(id, kind, amount, spentAt, gameId, recipient ?? null);
+      return database
+        .prepare("SELECT * FROM arcade_events WHERE id = ?")
+        .get(id) as ArcadeEvent;
+    },
+
+    // One game's pool-affecting events (add + payout), ordered by spend count.
+    poolEvents(gameId: string): ArcadeEvent[] {
+      return database
+        .prepare(
+          "SELECT * FROM arcade_events WHERE game_id = ? AND kind IN ('add','payout') ORDER BY spent_at ASC, rowid ASC"
+        )
+        .all(gameId) as ArcadeEvent[];
+    },
+
+    // Sum of a kind, optionally scoped to one game (gameId null = all games,
+    // used for the aggregate devsend total).
+    sumByKind(kind: string, gameId: string | null): number {
+      const row =
+        gameId === null
+          ? (database
+              .prepare(
+                "SELECT COALESCE(SUM(amount), 0) as v FROM arcade_events WHERE kind = ?"
+              )
+              .get(kind) as { v: number })
+          : (database
+              .prepare(
+                "SELECT COALESCE(SUM(amount), 0) as v FROM arcade_events WHERE kind = ? AND game_id = ?"
+              )
+              .get(kind, gameId) as { v: number });
+      return row.v;
+    },
+
+    recordPayout(
+      payoutId: string,
+      winners: Array<{ rank: number; handle: string | null; amount: number }>,
+      totalPaid: number,
+      spentAt: number,
+      gameId: string
+    ): void {
+      const txn = database.transaction(() => {
+        database
+          .prepare(
+            "INSERT INTO arcade_events (id, kind, amount, spent_at, game_id, payout_id) VALUES (?, 'payout', ?, ?, ?, ?)"
+          )
+          .run(generateId(), totalPaid, spentAt, gameId, payoutId);
+        for (const w of winners) {
+          database
+            .prepare(
+              "INSERT INTO arcade_winners (id, payout_id, rank, handle, amount) VALUES (?, ?, ?, ?, ?)"
+            )
+            .run(generateId(), payoutId, w.rank, w.handle, w.amount);
+        }
+      });
+      txn();
+    },
+
+    latestWinners(gameId: string): Winner[] {
+      const last = database
+        .prepare(
+          "SELECT payout_id FROM arcade_events WHERE kind = 'payout' AND game_id = ? AND payout_id IS NOT NULL ORDER BY created_at DESC, rowid DESC LIMIT 1"
+        )
+        .get(gameId) as { payout_id: string } | undefined;
+      if (!last) return [];
+      return database
+        .prepare(
+          "SELECT * FROM arcade_winners WHERE payout_id = ? ORDER BY rank ASC"
+        )
+        .all(last.payout_id) as Winner[];
+    },
+
+    // Payout + dev-send log across all games, newest first.
+    history(limit: number): HistoryEntry[] {
+      const events = database
+        .prepare(
+          "SELECT * FROM arcade_events WHERE kind IN ('payout','devsend') ORDER BY created_at DESC, rowid DESC LIMIT ?"
+        )
+        .all(limit) as ArcadeEvent[];
+      return events.map((e) => ({
+        kind: e.kind,
+        amount: e.amount,
+        recipient: e.recipient,
+        gameId: e.game_id,
+        created_at: e.created_at,
+        winners:
+          e.kind === "payout" && e.payout_id
+            ? (database
+                .prepare(
+                  "SELECT rank, handle, amount FROM arcade_winners WHERE payout_id = ? ORDER BY rank ASC"
+                )
+                .all(e.payout_id) as Array<{
+                rank: number;
+                handle: string | null;
+                amount: number;
+              }>)
+            : [],
+      }));
+    },
+
+    // Settle an admin pool-seed deposit exactly once: when its escrow deposit
+    // completes, record the real 'add' event for that game's pool. Idempotent on
+    // the deposit row status (guards a racing poll/callback).
+    settleSeedOnce(
+      depositId: string,
+      addAmount: number,
+      spentAt: number,
+      onionTxId?: string
+    ): { recorded: boolean } {
+      const txn = database.transaction(() => {
+        const dep = database
+          .prepare("SELECT * FROM deposits WHERE id = ?")
+          .get(depositId) as Deposit | undefined;
+        if (!dep || !dep.game_id) return { recorded: false };
+        if (dep.status === "completed" || dep.status === "failed") {
+          return { recorded: false };
+        }
+        database
+          .prepare(
+            "INSERT INTO arcade_events (id, kind, amount, spent_at, game_id) VALUES (?, 'add', ?, ?, ?)"
+          )
+          .run(generateId(), addAmount, spentAt, dep.game_id);
+        database
+          .prepare(
+            "UPDATE deposits SET status = 'completed', onion_tx_id = ? WHERE id = ?"
+          )
+          .run(onionTxId ?? dep.onion_tx_id, depositId);
+        return { recorded: true };
+      });
+      return txn();
+    },
+  };
+}
+
 let repos: DataRepos | null = null;
 
 export function getRepos(): DataRepos {
@@ -639,6 +987,7 @@ export function getRepos(): DataRepos {
       ledger: createLedgerRepo(database),
       deposits: createDepositRepo(database),
       withdrawals: createWithdrawalRepo(database),
+      arcadePool: createArcadePoolRepo(database),
     };
   }
   return repos;

@@ -86,15 +86,18 @@ export async function GET(request: NextRequest) {
 
   const repos = getRepos();
   const deposit = repos.deposits.getById(depositId);
-  if (!deposit) {
+  // Player buy-in deposits only — admin pool-seed deposits (player_id NULL) are
+  // polled via /api/arcade/add-to-pool, not here.
+  if (!deposit || !deposit.player_id) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
+  const playerId = deposit.player_id;
 
   // Already credited — return final state without touching the ledger.
   if (deposit.status === "completed") {
     return NextResponse.json({
       status: "completed",
-      balance: repos.ledger.getBalance(deposit.player_id),
+      balance: repos.ledger.getBalance(playerId),
     });
   }
 
@@ -136,6 +139,6 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     status,
-    balance: repos.ledger.getBalance(deposit.player_id),
+    balance: repos.ledger.getBalance(playerId),
   });
 }

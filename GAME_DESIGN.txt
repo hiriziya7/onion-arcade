@@ -1,0 +1,241 @@
+================================================================================
+ONION ARCADE — GAME & ECONOMY DESIGN (current state)
+================================================================================
+Purpose: a self-contained description of how the arcade works today — the games,
+the onion economy, player incentives, how the devs get paid, and the prize-pool
+mechanics — so it can be handed to an AI (or a person) as the basis for a
+redesign. No codebase access is assumed; everything needed is below.
+
+--------------------------------------------------------------------------------
+1. WHAT IT IS
+--------------------------------------------------------------------------------
+A neon, 8-bit web arcade of short skill/reflex games. Players compete on
+per-game leaderboards. Playing costs "onions" (a real currency on the OnionDAO
+platform). The onions players spend accumulate into a prize pool that is paid
+out to top players; the operator (devs) takes a 10% cut of everything spent.
+
+The arcade runs in two modes:
+  - LOCAL mode (no OnionDAO configured): a sandbox. Players get a free local
+    grant and onions are fake/local. Used for dev/testing.
+  - CONNECTED mode (OnionDAO configured): the real economy described here. Onions
+    are real, backed by an OnionDAO escrow "wallet" the arcade owns.
+Everything below describes CONNECTED mode unless noted.
+
+--------------------------------------------------------------------------------
+2. THE GAMES (3 today)
+--------------------------------------------------------------------------------
+All are single-player, score-per-round, and feed a per-game leaderboard. Each
+round costs a fixed number of onions (see GAME_COST). "Lower is better" means a
+smaller score ranks higher.
+
+  a) SEVEN          (id: seven)        — score: "ms off", LOWER is better
+     Stop a hidden clock at exactly 7.000 seconds. No visible timer. Score is how
+     many milliseconds you were off from 7.000s. Pure internal-clock skill.
+
+  b) LIGHTS OUT     (id: lights-out)   — score: "ms", LOWER is better
+     F1-style reaction test. Five red lights illuminate, then go dark; react the
+     instant darkness hits. Score is reaction time in ms. Jumping the start
+     (reacting before lights-out) is penalized.
+
+  c) ONION CHOP     (id: onion-chop)   — score: "pts", HIGHER is better
+     A blade sweeps across the board; tap to chop at dead-center. 20 swings per
+     round; hitting center builds a combo multiplier for a higher score.
+
+LEADERBOARD RULES
+  - Each game has its own leaderboard. A player's leaderboard entry is their BEST
+    single score (MIN for lower-is-better games, MAX otherwise).
+  - Ties broken by who achieved it first (earliest timestamp).
+  - Every round's score is recorded; personal best is shown to the player.
+  - Identity on the leaderboard = the player's OnionDAO username (see section 3).
+
+--------------------------------------------------------------------------------
+3. IDENTITY
+--------------------------------------------------------------------------------
+  - CONNECTED mode: a player signs in with their real OnionDAO USERNAME. It is
+    validated against OnionDAO. That username is how they appear on leaderboards
+    and is the wallet their onions move to/from.
+  - LOCAL mode: a player picks a local "@id" handle (no real account).
+  - One identity gate covers the whole arcade on first visit.
+  - NOTE (current limitation): username entry is not authenticated — a visitor
+    can type any existing OnionDAO username to appear under it on the
+    leaderboard. Funds are still safe (deposits require the real user to approve
+    in their own OnionDAO portal), but leaderboard identity can be spoofed. A
+    redesign should consider real OnionDAO login (magic-link / badge).
+
+--------------------------------------------------------------------------------
+4. THE ONION CURRENCY & THE ARCADE WALLET
+--------------------------------------------------------------------------------
+  - "Onions" are the OnionDAO platform currency. They can be POINTS (web-only) or
+    TOKENS (held on a physical OnionDAO badge) — the platform decides per user;
+    the arcade never chooses.
+  - The arcade owns ONE shared OnionDAO "escrow account" = the arcade WALLET. All
+    real onions live here. The arcade can pull onions OUT of this wallet to any
+    user with NO approval (it holds the wallet's secret) — this is what makes
+    instant payouts/cash-outs possible.
+  - Inside the arcade, each player has a local "credit" balance (a ticket). 1
+    onion deposited = 1 credit. Credits are what the games actually spend. The
+    real onions sit in the shared wallet; the credit ledger is the arcade's
+    promise of what it owes each player back.
+
+--------------------------------------------------------------------------------
+5. PLAYER MONEY FLOW (the core loop)
+--------------------------------------------------------------------------------
+  STEP 1 — BUY IN (one approval):
+    Player chooses an amount (presets 25 / 50 / 100, or custom 1–100,000) and
+    approves ONCE in their OnionDAO portal/badge. Those onions move into the
+    arcade wallet, and the player is credited the same number of local credits.
+    (In CONNECTED mode players start at 0 — no free onions — so they must buy in
+    to play.)
+
+  STEP 2 — PLAY (no approvals):
+    Each round costs GAME_COST credits (currently 5), deducted instantly from the
+    local balance. No per-round approval, no waiting. A player can play as many
+    rounds as their balance allows.
+
+  STEP 3 — CASH OUT (anytime, instant):
+    A "Cash out" button returns the player's ENTIRE UNUSED balance from the
+    arcade wallet back to their OnionDAO wallet. Instant for points users; for
+    badge/token users it may settle asynchronously ("sent — confirming…").
+    Onions already SPENT on games are NOT refundable — they're gone into the
+    prize pool. So a player effectively pays only for what they played.
+    (Current rule: cash-out is all-or-nothing — the whole remaining balance.)
+
+  WORKED EXAMPLE:
+    - Buy in 100 → wallet holds 100, player has 100 credits.
+    - Play 8 rounds × 5 = spend 40 → player has 60 credits left.
+    - Of the 40 spent: 36 → prize pool (90%), 4 → dev cut (10%).
+    - Cash out → player gets 60 onions back to their wallet.
+    - Net: player spent 40 real onions to play 8 rounds; 40 remain in the arcade
+      wallet (36 pool + 4 dev).
+
+--------------------------------------------------------------------------------
+6. PRIZE POOL & DEV CUT — POOL MECHANICS
+--------------------------------------------------------------------------------
+  - Every onion SPENT on gameplay (not deposited, not refunded — spent) is split:
+        PRIZE POOL share = floor(spent × 90%)
+        DEV CUT share     = spent − pool   (the remaining ~10%)
+    The split uses integer math so the two parts always re-sum to the exact
+    amount spent (no fractional onion is ever created or lost).
+  - The physical onions all sit pooled in the one arcade wallet. The 90/10 split
+    is an ACCOUNTING VIEW — it's only "realized" when onions are paid out (a
+    prize) or withdrawn (the dev cut).
+  - The PRIZE POOL displayed to players (a chip in the top bar) is:
+        floor(total_spent × 90%)  −  prizes already paid out
+  - The DEV CUT available to withdraw is:
+        (total_spent − floor(total_spent × 90%))  −  dev already withdrawn
+  - Pool grows automatically as people play. More players / more rounds = bigger
+    pot = stronger incentive to compete. It is currently ONE GLOBAL pool across
+    all three games (not per-game).
+
+--------------------------------------------------------------------------------
+7. PAYOUTS / TOURNAMENTS
+--------------------------------------------------------------------------------
+  - The operator pays prizes from an admin console (secret-gated). Today it is a
+    simple form: pick a winner's OnionDAO username + amount → it transfers from
+    the arcade wallet to them. The amount is capped at the available prize pool
+    (can't over-pay the pool).
+  - Intended cadence: a tournament payout ONCE A DAY (operator picks the
+    winner(s) from the leaderboards and pays them). This is manual today.
+  - The operator separately withdraws the accumulated DEV CUT to their own wallet
+    (also admin-gated, capped at the dev-cut balance).
+  - There is no automatic prize distribution, no entry-fee tournament brackets,
+    and no per-game pots today — all candidates for a redesign.
+
+--------------------------------------------------------------------------------
+8. HOW PLAYERS ARE INCENTIVISED
+--------------------------------------------------------------------------------
+  - SKILL competition: the games are pure skill/reflex; better players rank
+    higher on permanent leaderboards.
+  - REAL STAKES: playing costs real onions, and a real prize pool (90% of all
+    onions spent) is paid to top players — so skill converts to real winnings.
+  - LOW RISK: a player can cash out unused onions anytime, so they only ever lose
+    what they actually played. Buy-in is one approval; play is friction-free.
+  - GROWING POT: the pool visibly grows as the community plays, creating a
+    flywheel / FOMO to compete before the daily payout.
+  WEAKNESSES to consider: no explicit reason to play MORE rounds beyond chasing a
+  high score; the pool→winner link is operator-discretion (not transparent/
+  automatic); no streaks, achievements, multipliers, or per-game prizes yet.
+
+--------------------------------------------------------------------------------
+9. HOW THE DEVS (OPERATOR) GET PAID
+--------------------------------------------------------------------------------
+  - The operator earns a 10% RAKE on every onion SPENT on gameplay (not on
+    deposits, and not on the refunded/cashed-out portion — only on onions
+    actually played). This accrues continuously and is withdrawable to the
+    operator's OnionDAO wallet anytime via the admin console.
+  - Example: across a day players collectively spend 10,000 onions on rounds →
+    9,000 to the prize pool, 1,000 to the operator.
+  - The rake percentage is a single tunable number (currently 10%).
+
+--------------------------------------------------------------------------------
+10. THE "NO ONIONS LOST" ACCOUNTING MODEL
+--------------------------------------------------------------------------------
+At every instant, every onion in the arcade wallet belongs to exactly one of
+four buckets, and they must sum to the wallet's real balance:
+
+    WALLET BALANCE  ==  PLAYER CREDITS (owed back)
+                      +  PRIZE POOL (90% of spent, minus prizes paid)
+                      +  DEV CUT     (10% of spent, minus dev withdrawn)
+                      +  IN-FLIGHT   (transfers started but not yet confirmed)
+
+  - All four are derived by summing an append-only ledger (no mutable counters),
+    so they can't silently drift.
+  - Money-moving operations (buy-in credit, cash-out, payout, dev-withdraw) are
+    exactly-once and atomic: the local debit is committed first, the external
+    transfer uses a unique idempotency key, and a transfer is only marked
+    complete on confirmed success / only reversed on a definitive rejection /
+    left "pending" on a network blip (a reconcile step later settles it).
+  - A reconcile check recomputes the equation against the live wallet balance and
+    flags any drift (a built-in audit that proves no onions were lost).
+  Any redesign MUST preserve an equivalent invariant — it's what guarantees the
+  operator never pays out onions that don't exist and never loses player funds.
+
+--------------------------------------------------------------------------------
+11. CURRENT PARAMETERS (the tunable knobs)
+--------------------------------------------------------------------------------
+    Cost per round (GAME_COST) .............. 5 onions   (configurable)
+    Dev rake ................................ 10%        (→ pool gets 90%)
+    Buy-in presets .......................... 25 / 50 / 100 (custom 1–100,000)
+    Max single payout / withdrawal .......... 100,000 onions
+    Welcome grant (LOCAL mode only) ......... 100 onions (CONNECTED mode = 0)
+    Cash-out granularity .................... full balance only (no partial)
+    Prize pool scope ........................ ONE global pool (all games share)
+    Payout method ........................... manual, single winner, admin form
+    Games ................................... 3 (Seven, Lights Out, Onion Chop)
+
+--------------------------------------------------------------------------------
+12. KEY RULES / EDGE BEHAVIORS (so a redesign doesn't break them)
+--------------------------------------------------------------------------------
+  - Spent onions are non-refundable (they fund the pool). Only UNUSED credits
+    cash out.
+  - Free/welcome onions (LOCAL mode) are never cashable as real onions.
+  - Deposits require the player's approval; payouts/cash-outs/dev-withdrawals do
+    NOT require approval (the arcade authorizes them from its wallet).
+  - Points vs tokens: a cash-out/payout to a points user is instant; to a
+    badge/token user it can settle asynchronously.
+  - Payouts can never exceed the current prize pool; dev-withdrawals can never
+    exceed the accrued dev cut.
+
+--------------------------------------------------------------------------------
+13. REDESIGN LEVERS (ideas / open questions to explore)
+--------------------------------------------------------------------------------
+  - Rake & cost: tune GAME_COST and the 10% rake; dynamic pricing; first-round-
+    free; bulk-buy discounts.
+  - Pool distribution: automatic & transparent (e.g. top-N split by rank) vs
+    manual; per-game pools; scheduled tournaments with start/end + entry; jackpot
+    rollover; "winner takes X%, rest split."
+  - Engagement: streaks, daily challenges, achievements, combo multipliers that
+    affect winnings, seasons/ladders, head-to-head wagers, spectator/side bets.
+  - Risk/UX: partial cash-out; auto-cash-out on exit; show expected-value/odds;
+    clearer "you've spent X, pool is Y, you rank Z."
+  - Fairness/identity: real OnionDAO login to stop leaderboard spoofing; anti-bot;
+    per-account limits.
+  - Economy safety: keep the four-bucket invariant + reconcile no matter what;
+    decide policy for unused pool, refunds, and stuck/async transfers.
+
+================================================================================
+END — current design snapshot. Hand this to an AI with your redesign goals
+(e.g. "make the pool auto-distribute to the daily top 3, add entry-fee
+tournaments, raise the rake to 15%, add partial cash-out") and it has everything
+it needs to propose a coherent new design.
+================================================================================

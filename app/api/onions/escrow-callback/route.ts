@@ -83,12 +83,17 @@ export async function POST(request: NextRequest) {
   if (completedOk) {
     const deposit = repos.deposits.getByExternalId(externalId);
     if (deposit) {
-      // Credit the amount the escrow actually settled when reported, falling
-      // back to the requested amount. creditOnce is atomic and idempotent, so
-      // racing with the deposit GET poll credits exactly once.
       const settled =
         typeof amount === "number" && amount > 0 ? amount : deposit.amount;
-      repos.deposits.creditOnce(deposit.id, settled, transactionId);
+      if (deposit.game_id && !deposit.player_id) {
+        // Admin pool-seed deposit: record the pool 'add', not a player credit.
+        const spentAt = repos.ledger.spentTotalForGame(deposit.game_id);
+        repos.arcadePool.settleSeedOnce(deposit.id, settled, spentAt, transactionId);
+      } else {
+        // Player buy-in: credit the player ledger. Atomic + idempotent, so
+        // racing with the deposit GET poll credits exactly once.
+        repos.deposits.creditOnce(deposit.id, settled, transactionId);
+      }
     }
   } else if (TERMINAL_FAILURE.has(status ?? "") || status === "completed") {
     const deposit = repos.deposits.getByExternalId(externalId);

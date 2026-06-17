@@ -9,8 +9,35 @@ const PERIOD_MS = 1050;
 const MAX_CHOPS = 20;
 
 // Grading bands (distance from center target at 0.5).
-const PERFECT_BAND = 0.035;
+//
+// PERFECT is a TRUE frame-perfect hit: its window is exactly ONE frame at
+// PERFECT_FRAME_FPS of knife travel, so nailing it means landing the chop on the
+// exact frame the knife crosses center. The knife covers 1 unit per half-period
+// (speed = 2/PERIOD_MS units per ms), so a one-frame window spans
+// (2/PERIOD_MS)·(1000/FPS); the one-sided band is half that = 1000/(FPS·PERIOD_MS).
+// Higher FPS => tighter window => rarer perfects => a more scattered leaderboard.
+// At 30fps this is ~33ms (~0.0317 wide); bump to 45–60 to make perfects rarer.
+const PERFECT_FRAME_FPS = 30;
+const PERFECT_BAND = 1000 / (PERFECT_FRAME_FPS * PERIOD_MS);
 const GOOD_BAND = 0.095;
+
+// The target hops left/right randomly every swing, so you can't memorise "chop
+// at the middle" — you must re-spot it and time the knife to it each chop. Kept
+// inside [TARGET_MIN, TARGET_MAX] so the bands stay fully on the track and the
+// knife travels at a constant speed through it (fair: the PERFECT window is the
+// same duration wherever the target lands).
+const TARGET_MIN = 0.2;
+const TARGET_MAX = 0.8;
+const TARGET_MIN_SHIFT = 0.14; // guarantee it visibly moves each time
+
+/** Pick the next target, far enough from `prev` that it clearly relocates. */
+function nextTarget(prev: number): number {
+  let t = prev;
+  for (let i = 0; i < 8 && Math.abs(t - prev) < TARGET_MIN_SHIFT; i++) {
+    t = TARGET_MIN + Math.random() * (TARGET_MAX - TARGET_MIN);
+  }
+  return t;
+}
 
 type Phase = "idle" | "playing" | "result";
 type Grade = "PERFECT" | "GOOD" | "MISS";
@@ -55,6 +82,10 @@ export function OnionChop({ onScore, personalBest, disabled }: GameProps) {
 
   // Rendered knife position (0..1), driven by rAF.
   const [knife, setKnife] = useState(0.5);
+  // Current target (0..1). Ref is the authority used for synchronous grading;
+  // state drives where the bands render.
+  const [target, setTarget] = useState(0.5);
+  const targetRef = useRef(0.5);
 
   const startRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -89,6 +120,8 @@ export function OnionChop({ onScore, personalBest, disabled }: GameProps) {
     setBestCombo(0);
     setIsNewBest(false);
     setKnife(0.5);
+    setTarget(0.5);
+    targetRef.current = 0.5;
     startRef.current = null;
     submittedRef.current = false;
     comboRef.current = 0;
@@ -119,6 +152,9 @@ export function OnionChop({ onScore, personalBest, disabled }: GameProps) {
     if (phase === "idle") {
       startRef.current = performance.now();
       submittedRef.current = false;
+      const first = nextTarget(0.5);
+      targetRef.current = first;
+      setTarget(first);
       setPhase("playing");
       return;
     }
@@ -129,7 +165,7 @@ export function OnionChop({ onScore, personalBest, disabled }: GameProps) {
     // Sample knife position from the exact event time, not the rendered frame.
     const now = performance.now();
     const pos = knifePosAt(now, startRef.current);
-    const distance = Math.abs(pos - 0.5);
+    const distance = Math.abs(pos - targetRef.current);
     const { grade, base } = gradeFor(distance);
 
     // Compute the whole step synchronously from the live refs. Combo is
@@ -157,6 +193,13 @@ export function OnionChop({ onScore, personalBest, disabled }: GameProps) {
     setPerfectHits(nextPerfect);
     setGoodHits(nextGood);
     setLastGrade(grade);
+
+    // Hop the target left/right for the next swing (skill: re-aim every chop).
+    if (nextChops < MAX_CHOPS) {
+      const t = nextTarget(targetRef.current);
+      targetRef.current = t;
+      setTarget(t);
+    }
 
     // Run ends after the 20th chop — submit the final total exactly once.
     if (nextChops >= MAX_CHOPS) {
@@ -273,41 +316,48 @@ export function OnionChop({ onScore, personalBest, disabled }: GameProps) {
             className="relative h-16 w-full overflow-hidden border-y-[6px] border-[var(--border-strong)] bg-[var(--bg-deep)]"
             style={{ imageRendering: "pixelated" }}
           >
-            {/* GOOD band (wider, yellow tint) */}
+            {/* GOOD band (wider, yellow tint) — follows the moving target */}
             <div
               className="absolute top-0 bottom-0"
               style={{
-                left: `${50 - goodPct / 2}%`,
+                left: `${target * 100 - goodPct / 2}%`,
                 width: `${goodPct}%`,
                 background: "var(--neon-yellow)",
                 opacity: 0.18,
               }}
               aria-hidden="true"
             />
-            {/* PERFECT band (narrow, green tint) */}
+            {/* PERFECT band (narrow, green tint) — follows the moving target */}
             <div
               className="absolute top-0 bottom-0"
               style={{
-                left: `${50 - perfectPct / 2}%`,
+                left: `${target * 100 - perfectPct / 2}%`,
                 width: `${perfectPct}%`,
                 background: "var(--neon-primary)",
                 opacity: 0.35,
               }}
               aria-hidden="true"
             />
-            {/* Center target line */}
+            {/* Target line — where you must chop this swing */}
             <div
-              className="absolute top-0 bottom-0 left-1/2 w-[2px] -translate-x-1/2 bg-[var(--neon-primary)]"
+              className="absolute top-0 bottom-0 w-[3px] -translate-x-1/2 bg-[var(--neon-primary)]"
+              style={{
+                left: `${target * 100}%`,
+                boxShadow: "0 0 8px var(--neon-primary)",
+              }}
               aria-hidden="true"
             />
-            {/* Knife marker — chunky pixel bar */}
+            {/* Knife marker — bright WHITE bar, easy to track against the
+                yellow GOOD / green PERFECT bands; thin crisp core so you can
+                read the exact frame it crosses center. */}
             <div
-              className="absolute top-0 bottom-0 w-[8px]"
+              className="absolute top-0 bottom-0 w-[5px]"
               style={{
                 left: `${knife * 100}%`,
                 transform: "translateX(-50%)",
-                background: "var(--neon-yellow)",
-                boxShadow: "0 0 12px var(--neon-yellow)",
+                background: "#ffffff",
+                boxShadow:
+                  "0 0 8px #ffffff, 0 0 18px rgba(255,255,255,0.75), 0 0 2px #ffffff",
               }}
               aria-hidden="true"
             />

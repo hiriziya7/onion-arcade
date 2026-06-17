@@ -23,6 +23,13 @@ const glowVar: Record<GlowColor, string> = {
   orange: "var(--neon-yellow)",
 };
 
+// ░░░ DEBUG FREE PLAY — REMOVE BEFORE HOSTING ░░░
+// When NEXT_PUBLIC_FREE_PLAY=1, the coin slot offers a "Free play" button that
+// arms a round without charging onions. Off by default (production-safe even if
+// this code is left in). To remove entirely: delete this const, the freePlay
+// callback below, and the button in the coin-slot overlay.
+const FREE_PLAY = process.env.NEXT_PUBLIC_FREE_PLAY === "1";
+
 export function GameShell({ game }: GameShellProps) {
   const { playerId, refresh } = usePlayer();
   const [personalBest, setPersonalBest] = useState<number | null>(null);
@@ -109,6 +116,13 @@ export function GameShell({ game }: GameShellProps) {
     }
     setInserting(false);
   }, [game.id, playerId, refresh]);
+
+  // DEBUG FREE PLAY — REMOVE BEFORE HOSTING. Arms a round with no onion charge.
+  const freePlay = useCallback(() => {
+    setCoinError(null);
+    setArmed(true);
+    setRoundKey((k) => k + 1);
+  }, []);
 
   const GameComponent = game.Component;
 
@@ -202,6 +216,17 @@ export function GameShell({ game }: GameShellProps) {
               >
                 {inserting ? "Inserting…" : "Insert coin"}
               </PixelButton>
+              {/* DEBUG FREE PLAY — REMOVE BEFORE HOSTING */}
+              {FREE_PLAY && (
+                <PixelButton
+                  type="button"
+                  variant="ghost"
+                  onClick={freePlay}
+                  disabled={inserting}
+                >
+                  Free play (debug)
+                </PixelButton>
+              )}
               {coinError && (
                 <p
                   className="px-4 text-center text-xs"

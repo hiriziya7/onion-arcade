@@ -8,15 +8,18 @@ import * as THREE from "three";
  * Full-viewport animated aurora shader, fixed behind all content.
  * Adapted from 21st.dev "animated-shader-background" (thanh).
  *
- * The dashboard ("/") and every game screen ("/play/*") are intentionally
- * PLAIN BLACK — the aurora, vignette and scanlines are suppressed there so the
- * flat 8-bit surfaces read on pure black. Any other route keeps the animated
- * background.
+ * The dashboard ("/"), every game screen ("/play/*"), and admin routes
+ * ("/admin/*") are intentionally PLAIN BLACK — the aurora, vignette and
+ * scanlines are suppressed there so the flat 8-bit surfaces read on pure
+ * black. Any other route keeps the animated background.
  */
 export function ShaderBackground() {
   const containerRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
-  const plainBlack = pathname === "/" || pathname.startsWith("/play");
+  const plainBlack =
+    pathname === "/" ||
+    pathname.startsWith("/play") ||
+    pathname.startsWith("/admin");
 
   useEffect(() => {
     // Plain-black routes skip mounting the WebGL shader entirely.
