@@ -8,15 +8,8 @@ import { usePlayer } from "@/components/PlayerProvider";
 import { PersonalBest } from "@/components/PersonalBest";
 import { LeaderboardDrawer } from "@/components/LeaderboardDrawer";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { PixelButton } from "@/components/ui/8bit/pixel-button";
+import { GAME_COST } from "@/lib/onions/cost";
 
 interface GameShellProps {
   game: ArcadeGame;
@@ -31,18 +24,34 @@ const glowVar: Record<GlowColor, string> = {
 };
 
 export function GameShell({ game }: GameShellProps) {
-  const { playerId, handle, setHandle, refresh } = usePlayer();
+  const { playerId, refresh } = usePlayer();
   const [personalBest, setPersonalBest] = useState<number | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [handlePromptOpen, setHandlePromptOpen] = useState(false);
-  const [pendingScore, setPendingScore] = useState<{
-    value: number;
-    meta?: Record<string, unknown>;
-  } | null>(null);
-  const [handleInput, setHandleInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [armed, setArmed] = useState(false);
+  const [roundKey, setRoundKey] = useState(0);
+  const [coinError, setCoinError] = useState<string | null>(null);
+  const [inserting, setInserting] = useState(false);
+  // The server enforces the real cost (GAME_COST env); the client constant is
+  // just the default shown until /api/onions/status reports the live value.
+  const [gameCost, setGameCost] = useState<number>(GAME_COST);
 
   const accent = glowVar[game.glow];
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/onions/status")
+      .then((res) => res.json())
+      .then((data) => {
+        if (active && typeof data?.gameCost === "number") {
+          setGameCost(data.gameCost);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const fetchPersonalBest = useCallback(async () => {
     const res = await fetch(
@@ -58,23 +67,15 @@ export function GameShell({ game }: GameShellProps) {
     fetchPersonalBest();
   }, [fetchPersonalBest]);
 
-  const submitScore = useCallback(
-    async (
-      value: number,
-      meta?: Record<string, unknown>,
-      handleOverride?: string
-    ) => {
+  // Identity is claimed up front at the OnionIdGate, so by the time a score
+  // lands the player already has an @id — just record it.
+  const onScore = useCallback(
+    async (value: number, meta?: Record<string, unknown>) => {
       setSubmitting(true);
       const res = await fetch("/api/scores", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          gameId: game.id,
-          playerId,
-          value,
-          meta,
-          handle: handleOverride,
-        }),
+        body: JSON.stringify({ gameId: game.id, playerId, value, meta }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -82,31 +83,32 @@ export function GameShell({ game }: GameShellProps) {
         await refresh();
       }
       setSubmitting(false);
+      // Round is over — require a fresh coin before the next play. The overlay
+      // re-covers the game's own Play-again button.
+      setArmed(false);
     },
     [game.id, playerId, refresh]
   );
 
-  const onScore = useCallback(
-    (value: number, meta?: Record<string, unknown>) => {
-      if (!handle) {
-        setPendingScore({ value, meta });
-        setHandlePromptOpen(true);
-        return;
-      }
-      submitScore(value, meta);
-    },
-    [handle, submitScore]
-  );
-
-  const handleHandleSubmit = useCallback(async () => {
-    const trimmed = handleInput.trim();
-    if (!trimmed || !pendingScore) return;
-    await setHandle(trimmed);
-    await submitScore(pendingScore.value, pendingScore.meta, trimmed);
-    setPendingScore(null);
-    setHandlePromptOpen(false);
-    setHandleInput("");
-  }, [handleInput, pendingScore, setHandle, submitScore]);
+  const insertCoin = useCallback(async () => {
+    setInserting(true);
+    setCoinError(null);
+    const res = await fetch("/api/onions/spend", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerId, gameId: game.id }),
+    });
+    if (res.ok) {
+      setArmed(true);
+      setRoundKey((k) => k + 1);
+      await refresh();
+    } else if (res.status === 402) {
+      setCoinError("Not enough onions — add more from the top bar");
+    } else {
+      setCoinError("Something went wrong — try again");
+    }
+    setInserting(false);
+  }, [game.id, playerId, refresh]);
 
   const GameComponent = game.Component;
 
@@ -174,10 +176,42 @@ export function GameShell({ game }: GameShellProps) {
           ))}
 
           <GameComponent
+            key={roundKey}
             onScore={onScore}
             personalBest={personalBest}
-            disabled={drawerOpen || submitting || handlePromptOpen}
+            disabled={!armed || drawerOpen || submitting}
           />
+
+          {/* Coin-slot paywall — covers the stage between rounds. */}
+          {!armed && !drawerOpen && (
+            <div
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-5 bg-[var(--bg-deep)]/90 backdrop-blur-sm"
+              style={{ borderColor: accent }}
+            >
+              <p className="retro text-center text-sm uppercase text-[var(--text)]">
+                Insert {gameCost} 🧅 to play
+              </p>
+              <PixelButton
+                type="button"
+                variant="solid"
+                onClick={insertCoin}
+                disabled={inserting}
+                style={
+                  { ["--pixel-edge"]: accent } as React.CSSProperties
+                }
+              >
+                {inserting ? "Inserting…" : "Insert coin"}
+              </PixelButton>
+              {coinError && (
+                <p
+                  className="px-4 text-center text-xs"
+                  style={{ color: "var(--neon-red)" }}
+                >
+                  {coinError}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         <p className="mt-4 text-center text-xs text-[var(--text-muted)]">
@@ -190,40 +224,6 @@ export function GameShell({ game }: GameShellProps) {
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
       />
-
-      <Dialog open={handlePromptOpen} onOpenChange={setHandlePromptOpen}>
-        <DialogContent
-          showCloseButton={false}
-          className="!bg-[var(--glass-bg)] !border !border-[var(--glass-border)] animate-scale-in gap-6 rounded-[var(--radius)]"
-        >
-          <DialogHeader>
-            <DialogTitle className="arcade-title text-[var(--text)]">
-              Enter your initials
-            </DialogTitle>
-            <DialogDescription className="text-[var(--text-muted)]">
-              Set your name to appear on the leaderboard.
-            </DialogDescription>
-          </DialogHeader>
-          <Input
-            value={handleInput}
-            onChange={(e) => setHandleInput(e.target.value)}
-            placeholder="Your handle"
-            maxLength={32}
-            className="border-[var(--border-subtle)] bg-[var(--bg)] text-[var(--text)]"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleHandleSubmit();
-            }}
-          />
-          <DialogFooter className="!bg-transparent border-t-[0.5px] border-[var(--border-subtle)] pt-4">
-            <Button
-              onClick={handleHandleSubmit}
-              disabled={!handleInput.trim() || submitting}
-            >
-              Save & submit score
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

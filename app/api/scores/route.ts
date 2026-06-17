@@ -3,6 +3,8 @@ import { getRepos } from "@/lib/data/sqlite";
 import { ensureWelcomeOnions } from "@/lib/onions/ledger";
 import { getGameMeta } from "@/lib/games/registry-data";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const gameId = searchParams.get("gameId");
@@ -44,7 +46,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { gameId, playerId, value, meta, handle } = body;
+    const { gameId, playerId, value, meta } = body;
 
     if (!gameId || !playerId || typeof value !== "number") {
       return NextResponse.json(
@@ -59,12 +61,8 @@ export async function POST(request: NextRequest) {
     }
 
     const repos = getRepos();
-    const player = repos.players.getOrCreatePlayer(playerId);
+    repos.players.getOrCreatePlayer(playerId);
     ensureWelcomeOnions(playerId);
-
-    if (handle && typeof handle === "string" && handle.trim()) {
-      repos.players.setHandle(playerId, handle.trim());
-    }
 
     const score = repos.scores.addScore(gameId, playerId, value, meta);
     const personalBest = repos.scores.getPersonalBest(

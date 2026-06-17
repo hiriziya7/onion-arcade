@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Orbitron } from "next/font/google";
 import { TopBar } from "@/components/TopBar";
 import { PlayerProvider } from "@/components/PlayerProvider";
+import { OnionIdGate } from "@/components/OnionIdGate";
 import { ShaderBackground } from "@/components/ShaderBackground";
 import "./globals.css";
 
@@ -40,6 +41,7 @@ export default function RootLayout({
         <PlayerProvider>
           <TopBar />
           {children}
+          <OnionIdGate />
         </PlayerProvider>
       </body>
     </html>
