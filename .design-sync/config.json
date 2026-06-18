@@ -1,0 +1,36 @@
+{
+  "projectId": "82487446-1297-4a6e-982b-d62f0fdf4b4b",
+  "pkg": "arcade",
+  "globalName": "ArcadeDS",
+  "shape": "package",
+  "srcDir": "components/ui",
+  "tsconfig": "tsconfig.json",
+  "cssEntry": ".design-sync/compiled.css",
+  "tokensGlob": "styles/tokens.css",
+  "buildCmd": "npx --yes @tailwindcss/cli@4 -i .design-sync/ds-tailwind.css -o .design-sync/compiled.css",
+  "readmeHeader": ".design-sync/conventions.md",
+  "componentSrcMap": {
+    "Button": "components/ui/button.tsx",
+    "Card": "components/ui/card.tsx",
+    "Dialog": "components/ui/dialog.tsx",
+    "Input": "components/ui/input.tsx",
+    "Sheet": "components/ui/sheet.tsx",
+    "GlowCard": "components/ui/spotlight-card.tsx",
+    "PixelButton": "components/ui/8bit/pixel-button.tsx",
+    "PixelPanel": "components/ui/8bit/pixel-panel.tsx"
+  },
+  "dtsPropsFor": {
+    "Button": "variant?: \"default\" | \"outline\" | \"secondary\" | \"ghost\" | \"destructive\" | \"link\"; size?: \"default\" | \"xs\" | \"sm\" | \"lg\" | \"icon\" | \"icon-xs\" | \"icon-sm\" | \"icon-lg\"; className?: string; disabled?: boolean; type?: \"button\" | \"submit\" | \"reset\"; onClick?: React.MouseEventHandler<HTMLButtonElement>; children?: React.ReactNode",
+    "Card": "size?: \"default\" | \"sm\"; className?: string; children?: React.ReactNode",
+    "Dialog": "open?: boolean; defaultOpen?: boolean; onOpenChange?: (open: boolean) => void; modal?: boolean; children?: React.ReactNode",
+    "Input": "type?: string; className?: string; placeholder?: string; value?: string; defaultValue?: string; disabled?: boolean; onChange?: React.ChangeEventHandler<HTMLInputElement>",
+    "Sheet": "open?: boolean; defaultOpen?: boolean; onOpenChange?: (open: boolean) => void; modal?: boolean; children?: React.ReactNode",
+    "GlowCard": "glowColor?: \"blue\" | \"purple\" | \"green\" | \"red\" | \"orange\"; size?: \"sm\" | \"md\" | \"lg\"; width?: string | number; height?: string | number; customSize?: boolean; className?: string; children?: React.ReactNode",
+    "PixelButton": "variant?: \"solid\" | \"outline\" | \"ghost\"; className?: string; disabled?: boolean; onClick?: React.MouseEventHandler<HTMLButtonElement>; children?: React.ReactNode",
+    "PixelPanel": "tone?: string; dashed?: boolean; className?: string; contentClassName?: string; children?: React.ReactNode"
+  },
+  "overrides": {
+    "Dialog": { "cardMode": "single", "viewport": "560x440" },
+    "Sheet": { "cardMode": "single", "viewport": "560x440" }
+  }
+}

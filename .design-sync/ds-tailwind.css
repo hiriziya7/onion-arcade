@@ -1,0 +1,20 @@
+/* design-sync Tailwind entry — compiles the arcade design system into ONE static
+   stylesheet for claude.ai/design.
+
+   It pulls in the app's real globals (which already @imports tailwindcss, the
+   token palette, and the @utility/@theme definitions) plus the brand fonts, and
+   scopes Tailwind's content scan to the DS components and the authored previews
+   so every utility class they use is emitted. This file is build-only and does
+   NOT modify any application file. cfg.cssEntry points at the compiled output. */
+@import "../app/globals.css";
+@import "./ds-fonts.css";
+
+@source "../components/ui/**/*.{ts,tsx}";
+@source "./previews/**/*.{ts,tsx}";
+
+/* Safelist the design system's full vocabulary. claude.ai/design ships only this
+   static stylesheet (no Tailwind runtime), so classes the agent will reach for in
+   NEW designs must be forced in even when no synced component happens to use them. */
+@source inline("{retro,arcade-title,neon-text,neon-text-subtle,neon-text-xs,pixel-shadow,scanlines,glass,pixel-badge,pixel-divider,pixelated,cursor-blink,gpu-motion,animate-fade-in,animate-rise-in,animate-scale-in}");
+@source inline("{bg,text,border,ring,fill,stroke}-{background,foreground,card,popover,primary,secondary,muted,accent,destructive,border,input,ring}");
+@source inline("{bg,text}-{primary,secondary,card,popover,accent,muted}-foreground");
