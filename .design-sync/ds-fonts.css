@@ -1,0 +1,12 @@
+/* Brand fonts for the Arcade design-system bundle.
+   In the app these are injected at runtime by next/font (Geist, Geist Mono,
+   Orbitron); the standalone design bundle has no Next runtime, so it loads them
+   from Google Fonts and defines the CSS variables the components reference
+   (--font-sans / --font-geist-mono / --font-display). Touches no app file. */
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&family=Orbitron:wght@400..900&display=swap");
+
+:root {
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-geist-mono: "Geist Mono", ui-monospace, monospace;
+  --font-display: "Orbitron", "Geist", sans-serif;
+}
